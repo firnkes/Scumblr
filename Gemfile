@@ -73,6 +73,7 @@ gem 'sidekiq'
 gem 'sidekiq-status'
 gem 'sidekiq-scheduler'
 gem 'sidekiq-limit_fetch'
+gem 'thread'
 gem 'mlanett-redis-lock', require: 'redis-lock'
 
 #Pagination
@@ -198,6 +199,7 @@ gem 'crack', '0.3.2'
 # needed by  sidekiq
 gem 'json'
 gem 'ffi'
+
 
 
 if File.exists?("custom/Gemfile")
