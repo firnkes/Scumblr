@@ -401,9 +401,6 @@ module Gitrob
             end
 
             def download_blob(blob)
-                # TODO handle other encodings than B64 - is there any?
-                # important: content MUST be decoded, otherwise creds cannot be found
-                # howto: https://developer.github.com/v3/repos/contents/#get-contents
                 github_client do |client|
                     b64blob = client.get_request(blob.url)["content"]
                     Base64.decode64(b64blob)
@@ -663,7 +660,7 @@ module Gitrob
                 findings <<
                 {
                     :caption => signature.caption,
-                    :description => signature.description, #TODO add finding location href
+                    :description => signature.description,
                     :file_name => blob.filename,
                     :url => blob.html_url,
                     :code_fragment => haystack,
