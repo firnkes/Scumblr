@@ -110,6 +110,8 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
                     report_results(results, repo)
             end
         end
+
+        return []
     end
 
     def analyze_blobs(blobs, repo, owner, data_manager)
