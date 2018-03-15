@@ -4,6 +4,7 @@ require 'json'
 require 'rest-client'
 require 'time'
 require 'byebug'
+
 class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
     def self.task_type_name
         "Github Gitrob Code Search"
@@ -96,7 +97,6 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         client_manager = Gitrob::Github::ClientManager.new({
             :access_tokens => [@github_oauth_token],
             :endpoint => @github_api_endpoint,
-
             :ssl => {:verify => true},})
 
         logins = @search_scope.keys
@@ -291,6 +291,7 @@ module Gitrob
 
             def blob_string_for_blob_repo(blob)
                 download_blob(blob)
+
             rescue ::Github::Error::Forbidden => e
                 # Hidden GitHub feature?
                 raise e unless e.message.include?("403 Repository access blocked")
@@ -350,10 +351,20 @@ module Gitrob
             end
 
             def download_blob(blob)
+                utf8blob = ""
                 github_client do |client|
                     b64blob = client.get_request(blob.url)["content"]
-                    Base64.decode64(b64blob)
+                    utf8blob = Base64.decode64(b64blob).encode(
+                        Encoding.find('UTF-8'),
+                        {invalid: :replace, undef: :replace, replace: ''} )
                 end
+
+                # binary files create encoding issues and it makes no sense to use regex on them
+                # so just ignore them
+                if binary?(utf8blob)
+                    utf8blob = ""
+                end
+                return utf8blob
             end
 
             def get_blobs(repository)
@@ -466,8 +477,7 @@ module Gitrob
             blob_findings = []
             signatures.each do |signature|
                 if signature.part == "content"
-                    if blob_string != nil
-                        #assuming blob_string is given in this case
+                    if !blob_string.nil? && !blob_string.empty?
                         findings = observe_with_content_regex_signature(blob, signature, blob_string)
                         blob_findings += findings if !findings.empty?
                     end
@@ -602,7 +612,6 @@ module Gitrob
             end
 
             regex = Regexp.new(signature.pattern, Regexp::IGNORECASE)
-            #TODO: check for GITROBIGNORE tag in order to ignore finding
             findings =[]
             blob_string.each_line do |haystack|
                 next if regex.match(haystack).nil?
@@ -620,4 +629,14 @@ module Gitrob
             return findings
         end
     end
+end
+
+require 'filemagic'
+def binary?(content)
+  begin
+    fm= FileMagic.new(FileMagic::MAGIC_MIME)
+    !(fm.buffer(content)=~ /^text\//)
+  ensure
+    fm.close
+  end
 end

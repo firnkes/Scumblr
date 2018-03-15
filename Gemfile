@@ -19,7 +19,7 @@ gem "bundler-audit"
 gem 'rest-client'
 gem 'chartkick'
 gem 'redcarpet'
-
+gem 'ruby-filemagic'
 gem 'addressable'
 
 gem 'jwt', '<= 1.5.2'
