@@ -1009,7 +1009,6 @@ GEM
     thor (0.20.0)
     thread_safe (0.3.6)
     tilt (1.4.1)
-    thread (0.2)
     trollop (2.1.2)
     turbolinks (2.2.2)
       coffee-rails

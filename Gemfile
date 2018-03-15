@@ -73,7 +73,6 @@ gem 'sidekiq'
 gem 'sidekiq-status'
 gem 'sidekiq-scheduler'
 gem 'sidekiq-limit_fetch'
-gem 'thread'
 gem 'mlanett-redis-lock', require: 'redis-lock'
 
 #Pagination

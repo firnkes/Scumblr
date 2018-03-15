@@ -93,9 +93,6 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
     end
 
     def run
-        require "thread/pool"
-        Thread::Pool.abort_on_exception = true
-
         client_manager = Gitrob::Github::ClientManager.new({
             :access_tokens => [@github_oauth_token],
             :endpoint => @github_api_endpoint,
@@ -104,21 +101,13 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
 
         logins = @search_scope.keys
         data_manager = Gitrob::Github::DataManager.new(logins, client_manager)
-        thread_pool do |pool|
-            data_manager.gather_owners(pool)
-        end
-        thread_pool do |pool|
-            data_manager.gather_repositories(pool)
-        end
+        data_manager.gather_owners()
+        data_manager.gather_repositories()
 
         data_manager.owners.each do |owner|
-            thread_pool do |pool|
-                data_manager.repositories_for_owner(owner).each do |repo|
-                    pool.process do
-                        results = analyze_blobs(data_manager.blobs_for_repository(repo), repo, owner, data_manager)
-                        report_results(results, repo)
-                    end
-                end
+            data_manager.repositories_for_owner(owner).each do |repo|
+                    results = analyze_blobs(data_manager.blobs_for_repository(repo), repo, owner, data_manager)
+                    report_results(results, repo)
             end
         end
     end
@@ -184,7 +173,6 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
                 res.add_tags(@options[:tags])
             end
             res.save!
-            # Do not create new result simply append vulns to results
         else
             github_result = Result.new(url: repo[:html_url].downcase, title: repo[:full_name].to_s + " (Github)", domain: "github", metadata: {"repository_data" => metadata["repository_data"],})
             if @options[:tags].present?
@@ -208,12 +196,6 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         search_metadata["repository_data"]["link"] = repo[:html_url]
         search_metadata["repository_data"]["repository_host"] = @github_api_endpoint.gsub(/\Ahttps?:\/\//,"").gsub(/\/.+/,"")
         return search_metadata
-    end
-
-    def thread_pool
-      pool = Thread::Pool.new(5)
-      yield pool
-      pool.shutdown
     end
 end
 
@@ -283,26 +265,22 @@ module Gitrob
                 @mutex = Mutex.new
             end
 
-            def gather_owners(thread_pool)
+            def gather_owners()
                 @logins.each do |login|
                     next unless owner = get_owner(login)
                     @owners << owner
                     @repositories_for_owners[owner["login"]] = []
                     next unless owner["type"] == "Organization"
-                    get_members(owner, thread_pool) if owner["type"] == "Organization"
+                    get_members(owner) if owner["type"] == "Organization"
                 end
                 @owners = @owners.uniq {|o| o["login"]}
             end
 
-            def gather_repositories(thread_pool)
+            def gather_repositories()
                 owners.each do |owner|
-                    thread_pool.process do
-                        repositories = get_repositories(owner)
-                        with_mutex do
-                            save_repositories(owner, repositories)
-                        end
-                        yield owner, repositories if block_given?
-                    end
+                    repositories = get_repositories(owner)
+                        save_repositories(owner, repositories)
+                    yield owner, repositories if block_given?
                 end
             end
 
@@ -348,16 +326,12 @@ module Gitrob
                 nil
             end
 
-            def get_members(org, thread_pool)
+            def get_members(org)
                 github_client do |client|
                     client.orgs.members.list(:org_name => org["login"]) do |owner|
-                        thread_pool.process do
-                            owner = get_owner(owner["login"])
-                            with_mutex do
-                                @owners << owner
-                                @repositories_for_owners[owner["login"]] = []
-                            end
-                        end
+                        owner = get_owner(owner["login"])
+                        @owners << owner
+                        @repositories_for_owners[owner["login"]] = []
                     end
                 end
             end
