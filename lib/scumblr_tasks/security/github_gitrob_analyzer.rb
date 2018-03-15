@@ -1,17 +1,3 @@
-#     Copyright 2016 Netflix, Inc.
-#
-#     Licensed under the Apache License, Version 2.0 (the "License");
-#     you may not use this file except in compliance with the License.
-#     You may obtain a copy of the License at
-#
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-#     Unless required by applicable law or agreed to in writing, software
-#     distributed under the License is distributed on an "AS IS" BASIS,
-#     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#     See the License for the specific language governing permissions and
-#     limitations under the License.
-
 require 'uri'
 require 'net/http'
 require 'json'
@@ -74,15 +60,6 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         })
     end
 
-    def rate_limit_sleep(remaining, reset, no_limit)
-        # This method sleeps until the rate limit resets
-        if remaining.to_i <= 1 && no_limit == false
-            time_to_sleep = (reset.to_i - Time.now.to_i)
-            puts "Sleeping for #{time_to_sleep}"
-            sleep (time_to_sleep + 1) if time_to_sleep > 0
-        end
-    end
-
 
     def initialize(options={})
         super
@@ -119,14 +96,12 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         require "thread/pool"
         Thread::Pool.abort_on_exception = true
 
-        # Hack: added gitrob functionality
         client_manager = Gitrob::Github::ClientManager.new({
             :access_tokens => [@github_oauth_token],
             :endpoint => @github_api_endpoint,
-            # TODO: This is not robust. Do we really need the site? If thats the case, add it as task parameter.
-            :site => @github_api_endpoint[0..@github_api_endpoint.index(/api/)-2],
+
             :ssl => {:verify => true},})
-        # TODO: gitrob does not support repositories as input, only users and organizations. Implement if required.
+
         logins = @search_scope.keys
         data_manager = Gitrob::Github::DataManager.new(logins, client_manager)
         thread_pool do |pool|
@@ -242,6 +217,7 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
     end
 end
 
+
 module Gitrob
     module Github
         class ClientManager
@@ -279,7 +255,6 @@ module Gitrob
                 ::Github.new(
                     :oauth_token     => access_token,
                     :endpoint        => @config[:endpoint],
-                    :site            => @config[:site],
                     :ssl             => @config[:ssl],
                     :user_agent      => USER_AGENT,
                     :auto_pagination => true
