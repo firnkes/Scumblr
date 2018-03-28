@@ -617,21 +617,20 @@ module Gitrob
             end
 
             regex = Regexp.new(signature.pattern, Regexp::IGNORECASE)
-            findings =[]
-            blob_string.each_line do |haystack|
+            findings = []
+            blob_string.each_line.with_index(1) do |haystack, index|
                 next if regex.match(haystack).nil?
                 findings <<
-                {
-                    :caption => signature.caption,
-                    :description => signature.description,
-                    :file_name => blob.filename,
-                    :url => blob.html_url,
-                    :code_fragment => haystack,
-                    :part => signature.part
-
-                }
+                    {
+                        caption: signature.caption,
+                        description: signature.description + "in line #{index}",
+                        file_name: blob.filename,
+                        url: blob.html_url + "#L#{index}",
+                        code_fragment: haystack,
+                        part: signature.part
+                    }
             end
-            return findings
+            findings
         end
     end
 end
