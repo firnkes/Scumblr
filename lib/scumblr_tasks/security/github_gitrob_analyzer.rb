@@ -18,15 +18,6 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         "Search github repos for specific values and create vulnerabilities for matches using gitrob's search functionality."
     end
 
-    def self.config_options
-        {
-            :github_api_endpoint => { name: "Github Endpoint",
-                description: "Allow configurable endpoint for Github Enterprise deployments",
-                required: false
-            }
-        }
-    end
-
     def self.options
         return super.merge({
             :github_oauth_token =>{ name: "Github OAuth Token",
@@ -57,7 +48,19 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
                 description: "Limit search to an Organization or User.",
                 required: true,
             type: :string},
-
+            :github_api_endpoint => { name: "Github Endpoint",
+                        description: "Configurable endpoint for Github Enterprise deployments",
+                        required: true,
+                        type: :choice,
+                        default: "https://github.infra.hana.ondemand.com/api/v3",
+                        choices: ["https://github.infra.hana.ondemand.com/api/v3",
+                                  "https://github.wdf.sap.corp/api/v3",
+                                  "https://api.github.com"]},
+            :custom_github_api_endpoint => { name: "Custom Github Endpoint",
+                        description: "Custom configurable endpoint for Github Enterprise deployments. Overwrites other endpoint configurations. Must point to an api endpoint, e.g.
+                        'https://github.wdf.sap.corp/api/v3'",
+                        required: false,
+                        type: :string},
         })
     end
 
@@ -65,8 +68,8 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
     def initialize(options={})
         super
 
-        @github_oauth_token = @github_oauth_token.to_s.strip
-        @github_api_endpoint = @github_api_endpoint.to_s.strip.empty? ? "https://api.github.com" : @github_api_endpoint
+        @github_oauth_token = @options[:github_oauth_token].to_s.strip
+        @github_api_endpoint = @options[:custom_github_api_endpoint].to_s.strip.empty? ? @options[:github_api_endpoint].to_s : @options[:custom_github_api_endpoint].to_s.strip.chomp("/")
 
         @search_scope = {}
         @results = []
