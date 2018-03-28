@@ -148,18 +148,22 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         if @options[:key_suffix].present?
             vuln.key_suffix = @options[:key_suffix]
         end
-        vuln.source = 'github'
+
+        vuln.source = 'github_event'
         vuln.task_id = @options[:_self].id.to_s
         vuln.severity = @options[:severity]
-        vuln.type = '"' + result[:caption] + '"' + " - #{result[:part]} match"
 
         begin
-            vuln.term = result[:caption]
+            vuln.name = result[:caption]
+            vuln.type = "#{result[:part]} match"
             vuln.file_name = result[:file_name]
             vuln.url = result[:url]
             vuln.code_fragment = result[:code_fragment]
             vuln.match_location = result[:part]
-
+            vuln.source_code_file = result[:file_name]
+            vuln.source_code_line = result[:line].present? ? result[:line].to_s : nil
+            vuln.details = "#{result[:caption]} #{result[:description]}"
+            vuln.regex = result[:regex].present? ? result[:regex] : nil
             return vuln
         rescue StandardError => e
             create_event("Unable to add metadata.\n\n. Exception: #{e.message}\n#{e.backtrace}", 'Warn')
@@ -595,8 +599,8 @@ module Gitrob
                 file_name: blob.filename,
                 url: blob.html_url,
                 code_fragment: haystack,
-                part: signature.part
-
+                part: signature.part,
+                regex: regex
             }
         end
 
@@ -610,15 +614,18 @@ module Gitrob
             regex = Regexp.new(signature.pattern, Regexp::IGNORECASE)
             findings = []
             blob_string.each_line.with_index(1) do |haystack, index|
-                next if regex.match(haystack).nil?
+                next unless regex.match(haystack)
+
                 findings <<
                     {
                         caption: signature.caption,
-                        description: signature.description + "in line #{index}",
+                        description: signature.description,
                         file_name: blob.filename,
                         url: blob.html_url + "#L#{index}",
                         code_fragment: haystack,
-                        part: signature.part
+                        part: signature.part,
+                        line: index,
+                        regex: regex
                     }
             end
             findings
