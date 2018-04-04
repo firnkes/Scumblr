@@ -5,6 +5,9 @@ require 'rest-client'
 require 'time'
 require 'byebug'
 
+BINARY_EXTENSIONS_FILE_PATH = File.join(File.dirname(__FILE__), '../../helpers/binary_extensions.json')
+BINARY_EXTENSIONS = JSON.parse(File.read(BINARY_EXTENSIONS_FILE_PATH))
+
 class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
     def self.task_type_name
         'Github Gitrob Code Search'
@@ -351,6 +354,12 @@ module Gitrob
             end
 
             def download_blob(blob)
+                # check for binary extension. This check cannot
+                # be always correct, because the list of binaries
+                # cannot be complete. Thus, the second binary Check
+                # after downloading the file is still needed.
+                return '' if binary_extension?(blob.path)
+
                 utf8blob = ''
                 github_client do |client|
                     b64blob = client.get_request(blob.url)['content']
@@ -639,4 +648,9 @@ def binary?(content)
     fm.buffer(content) !~ /^text\//
 ensure
     fm.close
+end
+
+def binary_extension?(path)
+    extension = File.extname(File.basename(path)).strip.downcase[1..-1]
+    BINARY_EXTENSIONS.include? extension
 end
