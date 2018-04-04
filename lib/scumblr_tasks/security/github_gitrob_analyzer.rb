@@ -24,8 +24,8 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
     def self.options
         super.merge(
             github_oauth_token: { name: 'Github OAuth Token',
-                                  description: 'Setting this token provides the access needed to search Github organizations or repos',
-                                  required: true },
+                                  description: "Setting this token provides the access needed to search private Github organizations or repos. If not set only public repos can be searched. Important: The token is requried to perform search on the official github endpoint. ('https://api.github.com')",
+                                  required: false },
             severity: { name: 'Finding Severity',
                         description: 'Set severity to either observation, high, medium, or low',
                         required: true,
@@ -68,7 +68,7 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
     def initialize(options = {})
         super
 
-        @github_oauth_token = @options[:github_oauth_token].to_s.strip
+        @github_oauth_token = @options[:github_oauth_token].to_s.strip.empty? ? nil : @options[:github_oauth_token].to_s.strip
         @github_api_endpoint = @options[:custom_github_api_endpoint].to_s.strip.empty? ? @options[:github_api_endpoint].to_s : @options[:custom_github_api_endpoint].to_s.strip.chomp('/')
 
         @search_scope = {}
