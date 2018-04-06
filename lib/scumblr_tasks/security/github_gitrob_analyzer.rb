@@ -116,6 +116,9 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         end
 
         []
+    rescue ::Github::Error::Unauthorized
+        raise ScumblrTask::TaskException.new("Unauthorized. Check if the Github OAuth Token is valid!")
+        return
     end
 
     def analyze_blobs(blobs, repo, owner, data_manager)
@@ -392,6 +395,7 @@ module Gitrob
                 raise e unless e.message.include?('API rate limit exceeded')
                 @client_manager.remove(client)
             rescue ::Github::Error::Unauthorized
+                raise
                 @client_manager.remove(client)
             end
 
