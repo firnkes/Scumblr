@@ -32,22 +32,18 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
                         type: :choice,
                         default: :observation,
                         choices: %i[observation high medium low] },
-            key_suffix: { name: 'Key Suffix',
-                          description: 'Provide a key suffix for testing out experimental regular expressions',
-                          required: false,
-                          type: :string },
-            tags: { name: 'Tag Results',
-                    description: 'Provide a tag for newly created results',
-                    required: false,
-                    type: :tag },
             max_results: { name: 'Limit search results',
                            description: 'Limit search results.',
                            required: true,
                            default: '200',
                            type: :string },
-            user: { name: 'Scope To User Or Organization',
+            user: { name: 'Scope to User Or Organization',
                     description: 'Limit search to an Organization or User.',
-                    required: true,
+                    required: false,
+                    type: :string },
+            repo: { name: 'Scope to Repository',
+                    description: "Limit search to a Repository. Full name with owner of repository is required. Schema ':owner/:repo'",
+                    required: false,
                     type: :string },
             github_api_endpoint: { name: 'Github Endpoint',
                                    description: 'Configurable endpoint for Github Enterprise deployments',
@@ -71,11 +67,8 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         @github_oauth_token = @options[:github_oauth_token].to_s.strip.empty? ? nil : @options[:github_oauth_token].to_s.strip
         @github_api_endpoint = @options[:custom_github_api_endpoint].to_s.strip.empty? ? @options[:github_api_endpoint].to_s : @options[:custom_github_api_endpoint].to_s.strip.chomp('/')
 
-        @search_scope = {}
-        @results = []
-        @terms = []
-        @total_matches = 0
-
+        @search_type = nil
+        @search_scope = nil
         # End of remove
         if @options[:key_suffix].present?
             @key_suffix = '_' + @options[:key_suffix].to_s.strip
@@ -86,13 +79,23 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         @options[:max_results] = @options[:max_results].to_i > 0 ? @options[:max_results].to_i : 200
 
         # Check that they actually specified a repo or org.
-        unless @options[:user].present?
-            raise ScumblrTask::TaskException, 'No user, or org provided.'
+        unless @options[:user].present? || @options[:repo].present?
+            raise ScumblrTask::TaskException, 'No user, repo, or org provided.'
             return
         end
 
-        if @options[:user].present?
-            @search_scope.merge!(@options[:user] => 'user')
+        # Only let one type of search be defined
+        if @options[:user].present? and @options[:repo].present?
+          create_event("Both user/originzation and repo provided, defaulting to user/originzation.")
+          @search_scope = @options[:user]
+          @search_type = :user
+          # Append any repos to the search scope
+        elsif @options[:repo].present?
+          @search_scope = @options[:repo]
+          @search_type = :repo
+        elsif @options[:user].present?
+          @search_scope = @options[:user]
+          @search_type = :user
         end
     end
 
@@ -103,8 +106,30 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
             ssl: { verify: true }
         )
 
-        logins = @search_scope.keys
-        data_manager = Gitrob::Github::DataManager.new(logins, client_manager)
+        if @search_type == :user
+            data_manager = Gitrob::Github::DataManager.new(@search_scope, client_manager)
+            analyze_user(data_manager)
+        else
+            data_manager = Gitrob::Github::DataManager.new([], client_manager)
+            analyze_repository(@search_scope, data_manager)
+        end
+
+        []
+    rescue ::Github::Error::Unauthorized
+        raise ScumblrTask::TaskException.new("Unauthorized. Check if the Github OAuth Token is valid!")
+        return
+    end
+
+    def analyze_repository(search_scope, data_manager)
+        owner_repo = search_scope.split('/', 2)
+        repo = data_manager.get_repository(owner_repo[0], owner_repo[1])
+        raise ScumblrTask::TaskException.new("Repository not found.") if repo.nil?
+
+        results = analyze_blobs(data_manager.blobs_for_repository(repo), repo, owner_repo[0], data_manager)
+        report_results(results, repo)
+    end
+
+    def analyze_user(data_manager)
         data_manager.gather_owners
         data_manager.gather_repositories
 
@@ -114,11 +139,6 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
                 report_results(results, repo)
             end
         end
-
-        []
-    rescue ::Github::Error::Unauthorized
-        raise ScumblrTask::TaskException.new("Unauthorized. Check if the Github OAuth Token is valid!")
-        return
     end
 
     def analyze_blobs(blobs, repo, owner, data_manager)
@@ -262,24 +282,22 @@ module Gitrob
                         :owners,
                         :repositories
 
-            def initialize(logins, client_manager)
-                @logins = logins
+            def initialize(login, client_manager)
+                @login = login
                 @client_manager = client_manager
                 @unknown_logins = []
                 @owners = []
                 @repositories = []
                 @repositories_for_owners = {}
-                @mutex = Mutex.new
             end
 
             def gather_owners
-                @logins.each do |login|
-                    next unless owner = get_owner(login)
-                    @owners << owner
-                    @repositories_for_owners[owner['login']] = []
-                    next unless owner['type'] == 'Organization'
-                    get_members(owner) if owner['type'] == 'Organization'
-                end
+                return unless owner = get_owner(@login)
+                @owners << owner
+                @repositories_for_owners[owner['login']] = []
+                return unless owner['type'] == 'Organization'
+                get_members(owner) if owner['type'] == 'Organization'
+
                 @owners = @owners.uniq { |o| o['login'] }
             end
 
@@ -293,6 +311,15 @@ module Gitrob
 
             def repositories_for_owner(owner)
                 @repositories_for_owners[owner['login']]
+            end
+
+            def get_repository(user, repo)
+                github_client do |client|
+                    client.repos.get(
+                        user: user,
+                        repo: repo
+                    )
+                end
             end
 
             def blob_string_for_blob_repo(blob)
@@ -351,7 +378,7 @@ module Gitrob
                     github_client do |client|
                         client.repos.list(
                             user: owner['login']
-                        ).reject { |r| r['fork'] }
+                        )
                     end
                 end
             end
