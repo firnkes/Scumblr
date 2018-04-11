@@ -52,8 +52,7 @@ class Ability
       can [:show, :index], Event
       can [:show, :index], SystemMetadata
       can :manage, Result
-      cannot :destroy, Result
-      can [:index, :show, :events, :search], Task
+      can :manage, Task
       can :manage, SavedFilter
       can :manage, Tag
       can [:index, :edit, :update, :show], User
