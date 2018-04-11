@@ -239,7 +239,6 @@ module Gitrob
 
             def initialize(config)
                 @config  = config
-                @mutex   = Mutex.new
                 @clients = []
                 config[:access_tokens].each do |token|
                     clients << create_client(token)
@@ -247,16 +246,12 @@ module Gitrob
             end
 
             def sample
-                @mutex.synchronize do
-                    raise NoClientsError if clients.count.zero?
-                    clients.sample
-                end
+                raise NoClientsError if clients.count.zero?
+                clients.sample
             end
 
             def remove(client)
-                @mutex.synchronize do
-                    clients.delete(client)
-                end
+                clients.delete(client)
             end
 
             private
@@ -431,9 +426,6 @@ module Gitrob
                 @repositories_for_owners[owner['login']] = repositories
             end
 
-            def with_mutex
-                @mutex.synchronize { yield }
-            end
         end
     end
 end
