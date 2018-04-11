@@ -118,6 +118,9 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
     rescue ::Github::Error::Unauthorized
         raise ScumblrTask::TaskException.new("Unauthorized. Check if the Github OAuth Token is valid!")
         return
+    rescue ::Gitrob::Github::DataManager::ApiLimitReachedError
+        raise ScumblrTask::TaskException.new("API rate Limit Reached. Setting OAuth Token could help.")
+        return
     end
 
     def analyze_repository(search_scope, data_manager)
@@ -131,7 +134,10 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
 
     def analyze_user(data_manager)
         data_manager.gather_owners
+        raise ScumblrTask::TaskException.new("No user/orga found.") if data_manager.owners.empty?
+
         data_manager.gather_repositories
+        raise ScumblrTask::TaskException.new("No repositories for user/orga found.") if data_manager.repositories.empty?
 
         data_manager.owners.each do |owner|
             data_manager.repositories_for_owner(owner).each do |repo|
@@ -277,6 +283,8 @@ module Gitrob
                         :owners,
                         :repositories
 
+            class ApiLimitReachedError <StandardError; end
+
             def initialize(login, client_manager)
                 @login = login
                 @client_manager = client_manager
@@ -315,6 +323,8 @@ module Gitrob
                         repo: repo
                     )
                 end
+            rescue ::Github::Error::NotFound
+                return nil
             end
 
             def blob_string_for_blob_repo(blob)
@@ -414,11 +424,13 @@ module Gitrob
                 client = @client_manager.sample
                 yield client
             rescue ::Github::Error::Forbidden => e
-                raise e unless e.message.include?('API rate limit exceeded')
-                @client_manager.remove(client)
+                if e.message.include?('API rate limit exceeded')
+                    raise ApiLimitReachedError
+                else
+                    raise e
+                end
             rescue ::Github::Error::Unauthorized
                 raise
-                @client_manager.remove(client)
             end
 
             def save_repositories(owner, repositories)
