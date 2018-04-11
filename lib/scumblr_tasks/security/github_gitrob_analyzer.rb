@@ -85,17 +85,17 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         end
 
         # Only let one type of search be defined
-        if @options[:user].present? and @options[:repo].present?
-          create_event("Both user/originzation and repo provided, defaulting to user/originzation.")
-          @search_scope = @options[:user]
-          @search_type = :user
-          # Append any repos to the search scope
+        if @options[:user].present? && @options[:repo].present?
+            create_event('Both user/originzation and repo provided, defaulting to user/originzation.')
+            @search_scope = @options[:user]
+            @search_type = :user
+        # Append any repos to the search scope
         elsif @options[:repo].present?
-          @search_scope = @options[:repo]
-          @search_type = :repo
+            @search_scope = @options[:repo]
+            @search_type = :repo
         elsif @options[:user].present?
-          @search_scope = @options[:user]
-          @search_type = :user
+            @search_scope = @options[:user]
+            @search_type = :user
         end
     end
 
@@ -116,17 +116,17 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
 
         []
     rescue ::Github::Error::Unauthorized
-        raise ScumblrTask::TaskException.new("Unauthorized. Check if the Github OAuth Token is valid!")
+        raise ScumblrTask::TaskException, 'Unauthorized. Check if the Github OAuth Token is valid!'
         return
     rescue ::Gitrob::Github::DataManager::ApiLimitReachedError
-        raise ScumblrTask::TaskException.new("API rate Limit Reached. Setting OAuth Token could help.")
+        raise ScumblrTask::TaskException, 'API rate Limit Reached. Setting OAuth Token could help.'
         return
     end
 
     def analyze_repository(search_scope, data_manager)
         owner_repo = search_scope.split('/', 2)
         repo = data_manager.get_repository(owner_repo[0], owner_repo[1])
-        raise ScumblrTask::TaskException.new("Repository not found.") if repo.nil?
+        raise ScumblrTask::TaskException, 'Repository not found.' if repo.nil?
 
         results = analyze_blobs(data_manager.blobs_for_repository(repo), repo, owner_repo[0], data_manager)
         report_results(results, repo)
@@ -134,10 +134,10 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
 
     def analyze_user(data_manager)
         data_manager.gather_owners
-        raise ScumblrTask::TaskException.new("No user/orga found.") if data_manager.owners.empty?
+        raise ScumblrTask::TaskException, 'No user/orga found.' if data_manager.owners.empty?
 
         data_manager.gather_repositories
-        raise ScumblrTask::TaskException.new("No repositories for user/orga found.") if data_manager.repositories.empty?
+        raise ScumblrTask::TaskException, 'No repositories for user/orga found.' if data_manager.repositories.empty?
 
         data_manager.owners.each do |owner|
             data_manager.repositories_for_owner(owner).each do |repo|
@@ -283,7 +283,7 @@ module Gitrob
                         :owners,
                         :repositories
 
-            class ApiLimitReachedError <StandardError; end
+            class ApiLimitReachedError < StandardError; end
 
             def initialize(login, client_manager)
                 @login = login
@@ -437,7 +437,6 @@ module Gitrob
                 @repositories += repositories
                 @repositories_for_owners[owner['login']] = repositories
             end
-
         end
     end
 end
