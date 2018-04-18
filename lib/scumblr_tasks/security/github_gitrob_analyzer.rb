@@ -125,6 +125,8 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
 
     def analyze_repository(search_scope, data_manager)
         owner_repo = search_scope.split('/', 2)
+        raise ScumblrTask::TaskException, "Full name of repository is required. Schema: ':owner/:repo'" if owner_repo.length < 2
+
         repo = data_manager.get_repository(owner_repo[0], owner_repo[1])
         raise ScumblrTask::TaskException, 'Repository not found.' if repo.nil?
 
