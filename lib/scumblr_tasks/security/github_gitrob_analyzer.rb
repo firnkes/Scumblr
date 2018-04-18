@@ -206,17 +206,18 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
 
     def upsert_vulnarabilities(vulnerabilities, repo)
         metadata = metadata(repo)
-        res = Result.where(url: repo[:html_url].downcase).first
+        res = Result.where({url: repo[:html_url].downcase, user: @options[:_user]}).first
         if res.present?
-            res.update_vulnerabilities(vulnerabilities)
+            res.update_vulnerabilities(vulnerabilities, {:isolate_vulnerabilities => true})
             res.metadata['repository_data'] = metadata['repository_data']
             res.add_tags(@options[:tags]) if @options[:tags].present?
             res.save!
         else
-            github_result = Result.new(url: repo[:html_url].downcase, title: repo[:full_name].to_s + ' (Github)', domain: 'github', metadata: { 'repository_data' => metadata['repository_data'] })
+            github_result = Result.new(url: repo[:html_url].downcase, title: repo[:full_name].to_s + ' (Github)', domain: 'github', metadata: { 'repository_data' => metadata['repository_data']})
+            github_result.user = @options[:_user]
             github_result.add_tags(@options[:tags]) if @options[:tags].present?
             github_result.save!
-            github_result.update_vulnerabilities(vulnerabilities)
+            github_result.update_vulnerabilities(vulnerabilities, {:isolate_vulnerabilities => true})
         end
     end
 

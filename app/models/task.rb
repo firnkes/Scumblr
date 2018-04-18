@@ -23,6 +23,7 @@ class Task < ActiveRecord::Base
   has_many :results, through: :task_results
   has_many :events, as: :eventable
 
+  belongs_to :user
   serialize :options, Hash
   # serialize :metadata, JSON
 
@@ -223,7 +224,7 @@ class Task < ActiveRecord::Base
     end
 
     task_type = task.task_type.constantize
-    task_options = task.options.merge({_self:task, _params:task_params})
+    task_options = task.options.merge({_self:task, _params:task_params, _user:task.user})
 
     results = nil
     begin

@@ -111,6 +111,7 @@ class TasksController < ApplicationController
   def create
 
     @task = Task.new(task_params)
+    @task.user = current_user
 
     @task_types = task_types
     if(Task.task_type_valid?(@task.task_type) && @task.task_type.constantize.respond_to?(:callback_task?) && @task.task_type.constantize.callback_task? == true)

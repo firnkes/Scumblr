@@ -616,7 +616,8 @@ CREATE TABLE tasks (
     "group" integer DEFAULT 1,
     metadata jsonb,
     run_type character varying DEFAULT 'scheduled'::character varying,
-    frequency character varying DEFAULT ''::character varying
+    frequency character varying DEFAULT ''::character varying,
+    user_id integer
 );
 
 
@@ -1623,3 +1624,4 @@ INSERT INTO schema_migrations (version) VALUES ('20170705165950');
 
 INSERT INTO schema_migrations (version) VALUES ('20170714205623');
 
+INSERT INTO schema_migrations (version) VALUES ('20180425125544');

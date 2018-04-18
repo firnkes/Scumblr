@@ -15,20 +15,20 @@
 require 'open-uri'
 
 class ResultsController < ApplicationController
+  before_filter :load_result, only: [:show, :edit, :update, :destroy, :tag, :action,
+                                       :flag, :update_status, :comment, :delete_tag, :assign, :add_attachment, :delete_attachment,
+                                       :subscribe, :unsubscribe, :update_screenshot,
+                                       :update_metadata]
   authorize_resource
   skip_before_filter :verify_authenticity_token, :only=>[:index, :update_screenshot]
 
-  before_filter :load_result, only: [:show, :edit, :update, :destroy, :tag, :action,
-                                     :flag, :update_status, :comment, :delete_tag, :assign, :add_attachment, :delete_attachment,
-                                     :subscribe, :unsubscribe, :update_screenshot,
-                                     :update_metadata]
 
   skip_authorize_resource :only=>:update_screenshot
   skip_authorization_check :only=>:update_screenshot
   skip_before_filter :authenticate_user!, :only=>:update_screenshot
 
   def summary
-    @result = Result.find(params[:id])
+    @result = Result.accessible_by(current_ability).find(params[:id])
     respond_to do |format|
       format.js
     end
@@ -36,14 +36,14 @@ class ResultsController < ApplicationController
 
   def expandall
     array_of_ids = params[:result_ids].split(',').map(&:to_i)
-    @results = Result.find(array_of_ids.to_a).index_by(&:id).slice(*array_of_ids).values
+    @results = Result.accessible_by(current_ability).find(array_of_ids.to_a).index_by(&:id).slice(*array_of_ids).values
     respond_to do |format|
       format.js
     end
   end
 
   def render_metadata_partial
-    @result = Result.cached_find(params[:id])
+    @result = Result.accessible_by(current_ability).cached_find(params[:id])
     @partial = params[:partial].to_s
     @target = params[:target]
 
@@ -54,8 +54,8 @@ class ResultsController < ApplicationController
       render text: "Invalid Partial"
       return
     end
-  
-    if(params.try(:[],"filter") && @result.metadata.class == Hash)      
+
+    if(params.try(:[],"filter") && @result.metadata.class == Hash)
       params.try(:[],"filter").each do |key,values|
 
         values.reject!{|x| x.blank?}
@@ -66,14 +66,14 @@ class ResultsController < ApplicationController
         begin
           @result.filter_metadata(@result.metadata, filter, values, filter_on)
         rescue
-          
+
         end
 
       end
-      
+
     end
 
-    
+
 
     respond_to do |format|
       format.html { render layout: false}
@@ -150,7 +150,7 @@ class ResultsController < ApplicationController
     # Task/Searches with most/least raw actionable results
     #
     @menu_item = "dashboard"
-    @results = Result.all
+    @results = Result.accessible_by(current_ability)
     @flags = Flag.all
     @results_by_date = Result.where(:id=>@results).group("date(created_at)").order("date(created_at)").count
     @statuses= Status.all
@@ -190,11 +190,11 @@ class ResultsController < ApplicationController
       task_results: {:method=>:task_results, :includes=>:task, :link=>{:method=>:task_id, :path=>:task_url, :params=>[:task_id]}, :attributes=>[:task_name, :task_type, :query, :created_at], name:"Tasks"},
       events: {
         name:"Events",
-        :method=>:events, 
-        :includes=>[:user, :event_changes], 
-        :link=>{:method=>:id, :path=>:event_url, :params=>[:id], :sort_key=>:id}, 
-        :attributes=>[:date, :field_name, :action, :old_value_to_s, :new_value_to_s, :user, :details], 
-        :sort_keys=>[:date,nil, :action,  nil, nil,:user_id], 
+        :method=>:events,
+        :includes=>[:user, :event_changes],
+        :link=>{:method=>:id, :path=>:event_url, :params=>[:id], :sort_key=>:id},
+        :attributes=>[:date, :field_name, :action, :old_value_to_s, :new_value_to_s, :user, :details],
+        :sort_keys=>[:date,nil, :action,  nil, nil,:user_id],
         :labels=>[nil, nil,nil, "Old Value", "New Value",nil, "Details"],
         :formatters=>[nil, nil,nil, nil, nil,nil, :hint_icon]
 
@@ -248,7 +248,7 @@ class ResultsController < ApplicationController
   # POST /results.json
   def create
     @result = Result.new(result_params)
-    @result.current_user = current_user
+    @result.user = current_user
     @result.metadata ||= {}
 
 
@@ -403,7 +403,7 @@ class ResultsController < ApplicationController
 
     @notice=""
     @options=""
-    @result = Result.find(params[:id])
+    @result = Result.accessible_by(current_ability).find(params[:id])
     @result_flag = @result.result_flags.find_by_id(params[:result_flag_id])
     @flag = @result_flag.flag
     old_stage = @result_flag.stage.name
@@ -588,7 +588,7 @@ class ResultsController < ApplicationController
         if status
           affected_results = Result.includes(:status).where.not(status_id: status.id).where(id: result_ids).map{|r| [r.id, r.status.try(:name)]}
           affected_results += Result.includes(:status).where(status_id: nil, id: result_ids).map{|r| [r.id, nil]}
-          
+
           events = []
           Result.where(id: result_ids).update_all({:status_id => status.id})
           affected_results.each do |r|
@@ -605,7 +605,7 @@ class ResultsController < ApplicationController
           affected_results = Result.includes(:user).where.not(user_id: user.id).where(id: result_ids).map{|r| [r.id, r.user.try(:email)]}
           affected_results += Result.includes(:user).where(user_id: nil, id: result_ids).map{|r| [r.id, r.user.try(:email)]}
           Result.where({:id=>result_ids}).update_all({:user_id => user.id})
-          
+
           events = []
           affected_results.each do |r|
             events << Event.new(date: Time.now, field: "Assignee", action: "Updated", user_id: current_user.id, old_value: r[1], new_value: user.email, eventable_type:"Result", eventable_id: r[0])
@@ -640,7 +640,7 @@ class ResultsController < ApplicationController
   end
 
   def update_screenshot
-    # If we're in a failed state (aka localhost files), stop execution 
+    # If we're in a failed state (aka localhost files), stop execution
     unless params[:sketch_url].present? and params[:sketch_url].to_s.include? "127.0.0.1"
       if(params[:sketch_url].present?)
         sketch_url = params[:sketch_url]
@@ -650,7 +650,7 @@ class ResultsController < ApplicationController
         begin
           attachment=nil
           if(Rails.configuration.try(:sketchy_verify_ssl) == false || Rails.configuration.try(:sketchy_verify_ssl) == "false")
-  	  
+
             attachment = @result.result_attachments.create(:attachment=>open(URI(sketch_url), {ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE}), :attachment_file_name=>File.basename(URI(sketch_url).path))
           else
             attachment =@result.result_attachments.create(:attachment=>open(URI(sketch_url)), :attachment_file_name=>File.basename(URI(sketch_url).path))
@@ -829,7 +829,7 @@ class ResultsController < ApplicationController
 
 
 
-    @result = Result.cached_find(params[:id])
+    @result = Result.accessible_by(current_ability).cached_find(params[:id])
     if(params[:key].blank?)
       response = @result.metadata
     else
@@ -846,16 +846,16 @@ class ResultsController < ApplicationController
     end
 
     if(params.try(:[],"filter") && response.class == Hash)
-      
+
       params.try(:[],"filter").each do |key,values|
         filter = key.split(":")
         filter_on=nil
         filter_on = params["filter_on"][key].split(":") if params.try(:[],"filter_on").try(:[],key)
         @result.filter_metadata(response, filter, values, filter_on)
-        
+
 
       end
-      
+
     end
 
 
@@ -878,7 +878,7 @@ class ResultsController < ApplicationController
     end
 
     @result.save
-    
+
     respond_to do |format|
       format.js
       format.json { render json: response.to_json, layout: false}
@@ -942,7 +942,7 @@ class ResultsController < ApplicationController
   def perform_search
     options = {}
     @index_columns ||= []
-    @total_result_count = Result.count
+    @total_result_count = Result.accessible_by(current_ability).count
 
     if(params[:view] == "tiles")
       session[:results_view] = "tiles"
@@ -1013,7 +1013,8 @@ class ResultsController < ApplicationController
 
     begin
       options[:columns] = @index_columns
-      @q, @results = Result.perform_search(params[:q], params[:page]||1, params[:per_page]||25, options)
+      @q, _results = Result.perform_search(params[:q], params[:page]||1, params[:per_page]||25, options)
+      @results = _results.accessible_by(current_ability)
     rescue=>e
       Rails.logger.error e.message
       Rails.logger.error e.backtrace
