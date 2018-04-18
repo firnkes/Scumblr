@@ -58,6 +58,7 @@ class Ability
       can [:index, :edit, :update, :show], User
       can :options, :provider
       can :index, Flag
+      can :options, :task_type
     end
   end
 end
