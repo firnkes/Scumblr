@@ -34,7 +34,7 @@ class Result < ActiveRecord::Base
 
   #attr_accessible :title, :url, :status_id
 
-  validates :url, uniqueness: true
+  validates :url, uniqueness: { scope: :user }
   validates :url, presence: true
   validates_format_of :url, with: /\A#{URI::regexp}\z/
 

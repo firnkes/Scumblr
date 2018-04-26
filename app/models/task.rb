@@ -30,7 +30,7 @@ class Task < ActiveRecord::Base
 
 
   validates :name, presence: true
-  validates :name, uniqueness: true
+  validates :name, uniqueness: { scope: :user }
   validates :run_type, presence: true
   validates :group, presence: true
   validate :validate_search
@@ -54,9 +54,9 @@ class Task < ActiveRecord::Base
   def self.update_schedules
     Sidekiq.schedule = []
     Task.where(enabled:true).each do |t|
-      
+
       t.schedule(t.frequency) if(t.frequency.present?)
-      
+
     end
 
   end
@@ -106,7 +106,7 @@ class Task < ActiveRecord::Base
       return
     end
 
-    
+
     task_type_options = self.task_type.constantize.options
     if(self.options.blank?)
       self.options = {}
@@ -203,9 +203,9 @@ class Task < ActiveRecord::Base
     if(task_options.nil?)
       task_options = self.options
     end
-    
+
     if(self.try(:metadata).try(:[],"runtime_override") != true)
-      runtime_options = runtime_options.with_indifferent_access.slice(*self.try(:metadata).try(:[],"runtime_override"))    
+      runtime_options = runtime_options.with_indifferent_access.slice(*self.try(:metadata).try(:[],"runtime_override"))
     end
     task_options.merge(runtime_options)
   end

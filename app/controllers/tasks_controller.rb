@@ -15,14 +15,12 @@
 class TasksController < ApplicationController
   before_filter :load_task, only: [:show, :edit, :update, :destroy, :enable, :disable, :get_metadata]
   authorize_resource
-  skip_before_action :verify_authenticity_token, only: [:run]
-
 
   # GET /tasks
   # GET /tasks.json
   def index
     @menu_item = "tasks"
-    @tasks = Task.all.order(:name)
+    @tasks = Task.accessible_by(current_ability).order(:name)
 
     respond_to do |format|
       format.html # index.html.erb
@@ -194,6 +192,7 @@ class TasksController < ApplicationController
         task_params = nil
       end
       load_task
+      authorize! :show, @task
 
       #@task.perform_task
       if(@task.run_type == "on_demand")
@@ -211,7 +210,7 @@ class TasksController < ApplicationController
 
 
       TaskRunner.perform_async(nil)
-      task_ids = Task.where(enabled:true, run_type: "scheduled").map{|s| s.id}
+      task_ids = Task.accessible_by(current_ability).where(enabled:true, run_type: "scheduled").map{|s| s.id}
       events = []
       task_ids.each do |s|
         events << Event.new(date: Time.now, field: "Task", action: "Run", user_id: current_user.id, eventable_type: "Task", eventable_id: s)
@@ -272,7 +271,7 @@ class TasksController < ApplicationController
       events = []
       if(params[:commit] == "Change Group" && params[:group_id] =~ /^[0-9]+$/)
         #validated group_id is a number above so should be safe here
-        Task.where({:id=>task_ids}).update_all({:group => params[:group_id]})
+        Task.where({:id=>task_ids}).accessible_by(current_ability, :update).update_all({:group => params[:group_id]})
         task_ids.each do |s|
           #TODO: Add event changes for each task
           events << Event.new(date: Time.now, action: "Updated", user_id: current_user.id, eventable_type:"Task", eventable_id: s)
@@ -281,7 +280,7 @@ class TasksController < ApplicationController
         message = "Task group updated."
 
       elsif(params[:commit] == "Enable")
-        Task.where({:id=>task_ids}).update_all({:enabled => true})
+        Task.where({:id=>task_ids}).accessible_by(current_ability, :update).update_all({:enabled => true})
         Task.update_schedules
         task_ids.each do |s|
           events << Event.new(date: Time.now, action: "Enabled", user_id: current_user.id, eventable_type:"Task", eventable_id: s)
@@ -290,7 +289,7 @@ class TasksController < ApplicationController
         message = "Tasks enabled."
 
       elsif(params[:commit] == "Disable")
-        Task.where({:id=>task_ids}).update_all({:enabled => false})
+        Task.where({:id=>task_ids}).accessible_by(current_ability, :update).update_all({:enabled => false})
         Task.update_schedules
         task_ids.each do |s|
           events << Event.new(date: Time.now, action: "Disabled", user_id: current_user.id, eventable_type:"Task", eventable_id: s)
@@ -298,7 +297,7 @@ class TasksController < ApplicationController
 
         message = "Tasks disabled."
       elsif(params[:commit] == "Delete")
-        Task.where({:id=>task_ids}).delete_all
+        Task.where({:id=>task_ids}).accessible_by(current_ability, :update).delete_all
         Task.update_schedules
         task_ids.each do |s|
           events << Event.new(date: Time.now, action: "Disabled", user_id: current_user.id, eventable_type:"Task", eventable_id: s)
@@ -308,7 +307,7 @@ class TasksController < ApplicationController
       elsif(params[:commit] == "Run")
         valid_tasks = []
         task_ids.each do |t|
-          task = Task.find_by_id(t)
+          task = Task.accessible_by(current_ability).find_by_id(t)
           if(task)
             valid_tasks << t
             events << Event.new(date: Time.now, action: "Run", user_id: current_user.id, eventable_type:"Task", eventable_id: t)
@@ -379,14 +378,14 @@ class TasksController < ApplicationController
   end
 
   def summary
-    @task = Task.find(params[:id])
+    @task = Task.accessible_by(current_ability).find(params[:id])
     respond_to do |format|
       format.js
     end
   end
 
   def expandall
-    @tasks = Task.all
+    @tasks = Task.accessible_by(current_ability)
     respond_to do |format|
       format.js
     end
@@ -400,7 +399,7 @@ class TasksController < ApplicationController
     system_metadata = []
     metadata_hash = {}
     @q = Task.ransack q_param
-    @tasks = @q.result.page(page).per(per_page)
+    @tasks = @q.accessible_by(current_ability).result.page(page).per(per_page)
 
     if resolve_system_metadata == "true"
       @system_metadata = []

@@ -46,7 +46,9 @@ class Ability
 
     alias_action :tag, :action, :flag, :update_status, :comment,
                  :delete_tag, :assign, :add_attachment,:delete_attachment,
-                 :subscribe, :unsubscribe, :update_screenshot, :update_metadata => :update
+                 :subscribe, :unsubscribe, :update_screenshot, :update_metadata,
+                 :enable, :disable => :update
+    alias_action :get_metadata => :read
 
     if user.admin?
       #Also see can_can.rb in the initializers folder
@@ -56,7 +58,7 @@ class Ability
       can [:show, :index], Event
       can [:show, :index], SystemMetadata
       can :manage, Result, :user => {:id => user.id}
-      can :manage, Task
+      can :manage, Task, :user => {:id => user.id}
       can :manage, SavedFilter
       can :manage, Tag
       can [:index, :edit, :update, :show], User
