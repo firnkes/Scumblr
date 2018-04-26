@@ -196,9 +196,9 @@ class TasksController < ApplicationController
 
       #@task.perform_task
       if(@task.run_type == "on_demand")
-        TaskRunner.perform_async(@task.id, task_params, params.try(:[],"task").try(:[],"options"))
+        TaskRunner.perform_async(@task.id, task_params, params.try(:[],"task").try(:[],"options").merge(current_user_id: current_user.id))
       else
-        TaskRunner.perform_async(@task.id, task_params)
+        TaskRunner.perform_async(@task.id, task_params, current_user_id: current_user.id)
       end
       @task.events << Event.create(field: "Task", action: "Run", user_id: current_user.id)
       respond_to do |format|
@@ -208,9 +208,8 @@ class TasksController < ApplicationController
 
     else
 
-
-      TaskRunner.perform_async(nil)
       task_ids = Task.accessible_by(current_ability).where(enabled:true, run_type: "scheduled").map{|s| s.id}
+      TaskRunner.perform_async(task_ids, nil, current_user_id: current_user.id)
       events = []
       task_ids.each do |s|
         events << Event.new(date: Time.now, field: "Task", action: "Run", user_id: current_user.id, eventable_type: "Task", eventable_id: s)
@@ -313,7 +312,7 @@ class TasksController < ApplicationController
             events << Event.new(date: Time.now, action: "Run", user_id: current_user.id, eventable_type:"Task", eventable_id: t)
           end
         end
-        TaskRunner.perform_async(valid_tasks)
+        TaskRunner.perform_async(valid_tasks, nil, current_user_id: current_user.id)
 
         message = "Running tasks."
 

@@ -55,7 +55,7 @@ class Ability
       can :manage, :all
     else
       can :status, :about
-      can [:show, :index], Event
+      can [:show, :index], Event, {:user_id =>user.id}
       can [:show, :index], SystemMetadata
       can :manage, Result, :user => {:id => user.id}
       can :manage, Task, :user => {:id => user.id}

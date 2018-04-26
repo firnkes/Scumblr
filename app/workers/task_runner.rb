@@ -42,35 +42,35 @@ class TaskRunner
               workers << TaskWorker.set(:queue => queue_name.to_sym).perform_async(t.id, task_params, task_options)
             else
               msg = "Fatal error in TaskRunner. Could not run #{t.id} in queue #{queue_name}. Queue not found."
-              Event.create(action: "Fatal", eventable: t, source: "TaskRunner", details: msg)
+              Event.create(action: "Fatal", eventable: t, source: "TaskRunner", details: msg,
+                           user_id: task_options["current_user_id"])
             end
           else
             workers << TaskWorker.perform_async(t.id, task_params, task_options)
           end
-          
+
         end
 
         while(!workers.empty?)
           at count, "A:Running group #{group_index}/#{task_groups.count}. Tasks complete: #{count}/#{total_count}."
-          
+
           Rails.logger.warn "#{workers.count} tasks remaining"
           workers.delete_if do |worker_id|
             status = Sidekiq::Status::status(worker_id)
             Rails.logger.warn "Task #{worker_id} #{status}"
             (status != :queued && status != :working) && count += 1
           end
-        
+
           sleep(2)
         end
         group_index += 1
       end
     rescue=>e
       msg = "Fatal error in TaskRunner. Task ids#{task_ids}. Task params:#{task_params}. Exception: #{e.message}\r\n#{e.backtrace}"
-      Event.create(action: "Fatal", source: "TaskRunner", details: msg)
+      Event.create(action: "Fatal", source: "TaskRunner", details: msg, user_id: task_options["current_user_id"])
       Rails.logger.error msg
     end
- 
+
   end
 
 end
-

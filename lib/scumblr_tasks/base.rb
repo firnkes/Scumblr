@@ -212,7 +212,7 @@ module ScumblrTask
         Rails.logger.debug details
       end
 
-      event_details = Event.create(action: level, eventable_id: @options.try(:[],:_self).try(:id), eventable_type: "Task", source: "Task: #{self.class.task_type_name}", details: details)
+      event_details = Event.create(action: level, eventable_id: @options.try(:[],:_self).try(:id), eventable_type: "Task", source: "Task: #{self.class.task_type_name}", details: details, user_id: @options[:_user].id)
 
       @event_metadata[level] ||= []
       @event_metadata[level] << event_details.id

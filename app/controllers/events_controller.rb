@@ -35,7 +35,7 @@ class EventsController < ApplicationController
       return
     end
 
-    @event_count = Event.count
+    @event_count = Event.accessible_by(current_ability).count
     @event_paginated = @events || []
 
     #We delete commit to prevent the parameter value from being picked up in pagination, etc.
@@ -55,7 +55,7 @@ class EventsController < ApplicationController
   end
 
   def show
-    @event = Event.find_by_id(params[:id])
+    @event = Event.accessible_by(current_ability).find_by_id(params[:id])
 
     @object =
     {
@@ -72,7 +72,7 @@ class EventsController < ApplicationController
   private
 
   def perform_search
-    @total_event_count = Event.count
+    @total_event_count = Event.accessible_by(current_ability).count
 
 
     if(params[:commit] == "Clear Search")
@@ -126,8 +126,8 @@ class EventsController < ApplicationController
 
     page = params[:page] || 1
     per = params[:per_page] || 25
-    @q, @events = Event.perform_search(params[:q], page, per)
-
+    @q, _events = Event.perform_search(params[:q], page, per)
+    @events = _events.accessible_by(current_ability)
     if(params[:commit] == "Save")
       @saved_filter = SavedFilter.new(saved_filter_type: "Event")
     end

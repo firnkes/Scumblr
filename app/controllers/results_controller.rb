@@ -655,7 +655,7 @@ class ResultsController < ApplicationController
           else
             attachment =@result.result_attachments.create(:attachment=>open(URI(sketch_url)), :attachment_file_name=>File.basename(URI(sketch_url).path))
           end
-          @result.events << Event.create(field: "Screenshot", action: "Created", new_value: attachment.try(:id)) if attachment
+          @result.events << Event.create(field: "Screenshot", action: "Created", new_value: attachment.try(:id), user_id: current_user.id) if attachment
         rescue Exception=>e
           Rails.logger.error "Error adding screenshot"
           Rails.logger.error e.message
@@ -701,14 +701,14 @@ class ResultsController < ApplicationController
         if(@result.tags.where(name:"Status").empty?)
 
           @result.tags << Tag.where(:name=>"Status", :value=>params[:url_response_code].to_s).first_or_create
-          @result.events << Event.create(field: "Status Code", action: "Updated", new_value: params[:url_response_code].to_s,source: "Sketchy")
+          @result.events << Event.create(field: "Status Code", action: "Updated", new_value: params[:url_response_code].to_s,source: "Sketchy", user_id: current_user.id)
         elsif(@result.tags.where(name:"Status", value:params[:url_response_code].to_s).empty?)
           t = @result.tags.where(name:"Status").first
           @result.taggings.where(tag: t).delete_all
           old_status = t.value
           @result.tags.where(name:"Status")
           @result.tags << Tag.where(:name=>"Status", :value=>params[:url_response_code].to_s).first_or_create
-          @result.events << Event.create(field: "Status Code", action: "Updated", old_value: old_status, new_value: params[:url_response_code].to_s,source: "Sketchy")
+          @result.events << Event.create(field: "Status Code", action: "Updated", old_value: old_status, new_value: params[:url_response_code].to_s,source: "Sketchy", user_id: current_user.id)
         end
 
       end

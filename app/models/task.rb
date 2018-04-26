@@ -38,6 +38,7 @@ class Task < ActiveRecord::Base
 
 
   accepts_nested_attributes_for :taggings, :tags
+  attr_accessor :current_user
 
   def to_s
     "Task #{id}"
@@ -237,9 +238,10 @@ class Task < ActiveRecord::Base
     rescue StandardError=>e
       if e.class == ScumblrTask::TaskException
 
-        event = Event.create(action: "Error", source:"Task: #{task.name}", details: e.message, eventable_type: "Task", eventable_id: task.id )
+        event = Event.create(action: "Error", source:"Task: #{task.name}", details: e.message, eventable_type: "Task", eventable_id: task.id, user_id:task.current_user.id)
       else
-        event = Event.create(action: "Error", source:"Task: #{task.name}", details: "Unable to run task #{task.name}.\n\nError: #{e.message}\n\n#{e.backtrace}", eventable_type: "Task", eventable_id: task.id )
+        event = Event.create(action: "Error", source:"Task: #{task.name}", details: "Unable to run task #{task.name}.\n\nError: #{e.message}\n\n#{e.backtrace}", eventable_type: "Task", eventable_id: task.id,
+        user_id:task.current_user.id)
       end
       Rails.logger.error "#{e.message}"
 
@@ -258,7 +260,7 @@ class Task < ActiveRecord::Base
       task.save
 
     else
-      event = Event.create(field: "Task", action: "Complete", source: "Task: #{task.name}", details: "Task completed in #{Time.now-t} seconds", eventable_type: "Task", eventable_id: task.id )
+      event = Event.create(field: "Task", action: "Complete", source: "Task: #{task.name}", details: "Task completed in #{Time.now-t} seconds", eventable_type: "Task", eventable_id: task.id, user_id:task.current_user.id )
       #Thread.current["current_events"][event.action] << event.id
       was_successful = true
       #task.metadata["_last_run"]  = task.metadata["_last_successful_run"] = Time.now
@@ -318,7 +320,7 @@ class Task < ActiveRecord::Base
       task.tags.each do |tag|
         tagging = result.taggings.where(:tag_id=>tag.id).first_or_initialize
         if tagging.changed?
-          result.events << Event.create(field: "Tag", action: "Created",source: self.name.to_s, new_value: tag.name_value)
+          result.events << Event.create(field: "Tag", action: "Created",source: self.name.to_s, new_value: tag.name_value, user_id:task.user.id)
 
           tagging.save
         end
