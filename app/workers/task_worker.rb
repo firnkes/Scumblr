@@ -34,12 +34,12 @@ class TaskWorker
 
     begin
       @task = Task.find(task_id)
-      @task.current_user = User.find(task_options["current_user_id"])
+      @task.current_user = User.find_by(id: task_options.try(:[], "current_user_id"))
 
       task_params.merge!(:_jid=>@jid)
 
       if(@task)
-        @task.events << Event.create(field: "Task", action: "Run", source: "Task Worker", user_id: @task.current_user.id)
+        @task.events << Event.create(field: "Task", action: "Run", source: "Task Worker", user_id: @task.current_user.try(:id))
         at 0, "B:Running #{@task.name}"
         @task.perform_task(task_params)
       else
@@ -48,11 +48,11 @@ class TaskWorker
 
     rescue Exception=>e
       msg = "Fatal low level exception in TaskWorker. Task id#{task_id}. Task params:#{task_params}. Exception: #{e.message}\r\n#{e.backtrace}"
-      Event.create(action: "Fatal", source: "TaskWorker", details: msg,eventable_type: "Task", eventable_id: task_id, user_id: @task.current_user.id)
+      Event.create(action: "Fatal", source: "TaskWorker", details: msg,eventable_type: "Task", eventable_id: task_id, user_id: @task.current_user.try(:id))
       return
     rescue StandardError=>e
       msg = "Fatal error in TaskWorker. Task id#{task_id}. Task params:#{task_params}. Exception: #{e.message}\r\n#{e.backtrace}"
-      Event.create(action: "Fatal", source: "TaskWorker", details: msg,eventable_type: "Task", eventable_id: task_id, user_id: @task.current_user.id)
+      Event.create(action: "Fatal", source: "TaskWorker", details: msg,eventable_type: "Task", eventable_id: task_id, user_id: @task.current_user.try(:id))
       Rails.logger.error msg
       return
     end

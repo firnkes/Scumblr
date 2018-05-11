@@ -924,6 +924,7 @@ GEM
       mime-types (>= 1.16, < 3.0)
       netrc (~> 0.7)
     retriable (1.4.1)
+    ruby-filemagic (0.7.2)
     ruby-prof (0.15.1)
     ruby-progressbar (1.8.1)
     ruby2ruby (2.3.0)
@@ -1131,6 +1132,7 @@ DEPENDENCIES
   redis-store (>= 1.4.1)
   responders
   rest-client
+  ruby-filemagic
   ruby-prof
   ruby_gntp
   sass (= 3.2.19)
