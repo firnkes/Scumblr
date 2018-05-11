@@ -18,7 +18,7 @@ require 'sidekiq-status'
 class TaskRunner
   include Sidekiq::Worker
   include Sidekiq::Status::Worker
-  sidekiq_options :queue => :runner, :retry => 0, :backtrace => true 
+  sidekiq_options :queue => :runner, :retry => 0, :backtrace => true
 
   def perform(task_ids=nil, task_params=nil, task_options=nil)
     begin
@@ -43,7 +43,7 @@ class TaskRunner
             else
               msg = "Fatal error in TaskRunner. Could not run #{t.id} in queue #{queue_name}. Queue not found."
               Event.create(action: "Fatal", eventable: t, source: "TaskRunner", details: msg,
-                           user_id: task_options["current_user_id"])
+                           user_id: task_options.try(:[], "current_user_id"))
             end
           else
             workers << TaskWorker.perform_async(t.id, task_params, task_options)
@@ -67,7 +67,7 @@ class TaskRunner
       end
     rescue=>e
       msg = "Fatal error in TaskRunner. Task ids#{task_ids}. Task params:#{task_params}. Exception: #{e.message}\r\n#{e.backtrace}"
-      Event.create(action: "Fatal", source: "TaskRunner", details: msg, user_id: task_options["current_user_id"])
+      Event.create(action: "Fatal", source: "TaskRunner", details: msg, user_id: task_options.try(:[], "current_user_id"))
       Rails.logger.error msg
     end
 

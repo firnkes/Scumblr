@@ -399,7 +399,7 @@ class TasksController < ApplicationController
     system_metadata = []
     metadata_hash = {}
     @q = Task.ransack q_param
-    @tasks = @q.accessible_by(current_ability).result.page(page).per(per_page)
+    @tasks = @q.result.accessible_by(current_ability).page(page).per(per_page)
 
     if resolve_system_metadata == "true"
       @system_metadata = []
