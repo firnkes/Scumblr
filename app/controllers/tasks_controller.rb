@@ -224,12 +224,13 @@ class TasksController < ApplicationController
   end
 
   def events
-    @statuses = []
+    _statuses = []
     begin
       Sidekiq::Workers.new.each do |k,k2,v|
-        @statuses << Sidekiq::Status.get_all(v["payload"]["jid"])
+        _statuses << Sidekiq::Status.get_all(v["payload"]["jid"])
       end
-      @statuses.sort!{|x,y| x["message"].to_s[0].to_s <=> y["message"].to_s[0].to_s}
+      _statuses.sort!{|x,y| x["message"].to_s[0].to_s <=> y["message"].to_s[0].to_s}
+      @statuses = _statuses.select {|x| (JSON.parse x["args"])[2]["current_user_id"] == current_user.id}
     rescue Redis::CannotConnectError
     end
   end
