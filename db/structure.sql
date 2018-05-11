@@ -1487,7 +1487,7 @@ CREATE INDEX index_workflowable_workflow_actions_on_workflow_id ON workflowable_
 -- Name: unique_results; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX unique_results ON results USING btree (url);
+CREATE INDEX index_results ON results USING btree (url);
 
 
 --
@@ -1625,3 +1625,5 @@ INSERT INTO schema_migrations (version) VALUES ('20170705165950');
 INSERT INTO schema_migrations (version) VALUES ('20170714205623');
 
 INSERT INTO schema_migrations (version) VALUES ('20180425125544');
+
+INSERT INTO schema_migrations (version) VALUES ('20180508125544');
