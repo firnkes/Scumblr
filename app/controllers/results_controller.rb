@@ -1008,7 +1008,8 @@ class ResultsController < ApplicationController
     end
 
     params[:q].reject! {|k,v| v.blank? || v==[""]} if params[:q]
-    session[:saved_search] = params[:q]
+    # do not save filter for result ids
+    session[:saved_search] = params[:q].select {|k,v| k != "id_in"}
     session[:view] = @view
 
     begin
