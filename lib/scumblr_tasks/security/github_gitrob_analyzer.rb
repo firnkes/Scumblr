@@ -18,7 +18,7 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
     end
 
     def self.description
-        "Search github repos for specific values and create vulnerabilities for matches using gitrob's search functionality."
+        "Searches one or several github repositories for secrets using gitrob's search functionality."
     end
 
     def self.options
