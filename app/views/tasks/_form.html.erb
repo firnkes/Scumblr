@@ -29,17 +29,19 @@
     <%= check_box_tag :on_demand, "1", @task.run_type == "on_demand", {class: "hide-toggle on-demand-toggle", data:{toggle:".on-demand-optons"}} %> <%= f.label :on_demand do %>On demand <span data-tooltip aria-haspopup="true" class="has-tip tip-right" title="On-demand task are not run on a schedule but only when triggered via an API call."><i class="fi-info"></i></span><% end %>
   </div>
 
-  <div class="field">
+  <div class="hidden">
     <%= f.label :task_type %>
-
+    <% @task.task_type = "ScumblrTask::GithubGitrobAnalyzer" %>
+    <% @task_type_description = ScumblrTask::GithubGitrobAnalyzer.description %>
     <%= f.grouped_collection_select :task_type, @task_types, :last, :first, :first, :last, {prompt: "Choose a task type"}, {id: :task_type_field, "data-source"=> @task.new_record? ? options_tasks_path : options_task_path(@task) , class: "select2"} %>
   </div>
+
   <div id="task_description">
     <% if @task_type_configuration.present? || @task_type_description.present?%>
       <%= render :partial=>"task_types/task_configuration", :locals => {:task_options=>@task.try(:options), task_type_options: @task_type_options, task_type_description: @task_type_description, task_type_configuration: @task_type_configuration } %>
     <% end %>
   </div>
-  
+
   <div class="search_type_field field <%= "hidden" if !@task.task_type.to_s.match(/\ASearchProvider::/) %>">
     <%= f.label :query %>
     <%= f.text_field :query %>
