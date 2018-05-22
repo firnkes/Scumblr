@@ -218,6 +218,8 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
             github_result.add_tags(@options[:tags]) if @options[:tags].present?
             github_result.save!
             github_result.update_vulnerabilities(vulnerabilities, {:isolate_vulnerabilities => true})
+            task_result = TaskResult.new({:task_id=>@options[:_self].id.to_s, :result_id=> github_result.id})
+            task_result.save
         end
     end
 

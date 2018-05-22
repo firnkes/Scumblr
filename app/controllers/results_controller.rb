@@ -154,7 +154,7 @@ class ResultsController < ApplicationController
     @flags = Flag.all
     @results_by_date = Result.where(:id=>@results).group("date(created_at)").order("date(created_at)").count
     @statuses= Status.all
-    @tasks = Task.all
+    @tasks = Task.accessible_by(current_ability)
 
 
     @flag_counts = ResultFlag.includes(:flag).where(:result_id=>@results).group("flags.name").references(:flags).count
