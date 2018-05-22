@@ -20,7 +20,7 @@ $(function(){
       <li class="tab-title active"><a href="#scheduled_tasks">Scheduled</a></li>
       <li class="tab-title"><a href="#on_demand_tasks">On Demand</a></li>
       <li class="tab-title"><a href="#callback_tasks">Callback</a></li>
-      
+
     </ul>
     <div class="tabs-content">
       <div class="content active" id="scheduled_tasks">
@@ -33,7 +33,7 @@ $(function(){
           </nav>
           <% i += 1 %>
 
-          <%= render partial: 'tasks_table', locals: {tasks: tasks} %>
+          <%= render partial: 'tasks_table', locals: {tasks: tasks, hide_frequency: true} %>
         <% end %>
         <%= link_to 'New Task', new_task_path, class: "button" if can? :create, Task %>
         <%= link_to 'Run All Enabled Tasks', run_tasks_path, class: "button alert" if can? :run, Task  %>
@@ -44,7 +44,7 @@ $(function(){
             <h1>On Demand Tasks</h1>
           </section>
         </nav>
-        
+
         <% on_demand_tasks = @tasks.select{|t| t.run_type == "on_demand"}.sort %>
         <%= render partial: 'tasks_table', locals: {tasks: on_demand_tasks, hide_frequency: true} %>
       </div>
@@ -60,7 +60,7 @@ $(function(){
 
     </div>
 
-  
+
 </div>
 
 <%= content_for :sidebar do %>
@@ -117,8 +117,8 @@ $(function(){
           Day of month <%= select_tag :day, options_for_select(["*"]+(1..31).to_a) %>
           Month <%= select_tag :month, options_for_select(["*"]+(1..12).to_a) %>
           Day of Week <%= select_tag :day_of_week, options_for_select(["*"]+(0..6).to_a) %>
-          
-          
+
+
         </p>
         <%= submit_tag "Schedule", :method=>:post, :class=>"button small schedule_tasks_button" %>
         <%= submit_tag "Unschedule", :method=>:post, :class=>"button small alert schedule_tasks_button" %>

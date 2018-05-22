@@ -46,14 +46,14 @@
     <%= f.label :query %>
     <%= f.text_field :query %>
   </div>
-  <div class="field ">
+  <div class="hidden">
     <%= f.label :frequency %>
     <%= f.text_field :frequency %>
   </div>
   <div id="task_type_options">
     <%= render partial: 'task_types/options_fields', locals: {task_options: @task.options, task_type_options: @task.task_type_options} %>
   </div>
-  
+
   <div id="tags" class="search_type_field <%= "hidden" if !@task.task_type.to_s.match(/\ASearchProvider::/) %>">
     <%= f.label :tags %>
     <%= f.hidden_field "tag_list", {value: @task.tag_list, class: "remote_select2", "data-multiple"=>true, "data-id-attribute"=>"name" , "data-parse-initial"=>"true", "data-create-new"=>"true", "data-object"=>"tags", "data-attribute"=>"name" , "data-path"=>tags_path} %>
