@@ -508,8 +508,9 @@ module Gitrob
         SIGNATURES_FILE_PATH = File.expand_path(
             '/etc/gitrob_signatures/signatures.json', __FILE__
         )
-        CUSTOM_SIGNATURES_FILE_PATH = File.join(
-            Dir.home, '.gitrobsignatures'
+
+        FALSE_POSITIVE_SIGNATURES_FILE_PATH = File.expand_path(
+            '/etc/gitrob_signatures/false_positive_signatures.json', __FILE__
         )
 
         REQUIRED_SIGNATURE_KEYS = %w[part type pattern caption description].freeze
@@ -542,17 +543,23 @@ module Gitrob
         end
 
         def self.signatures
-            load_signatures! unless @signatures
+            @signatures = load_signatures!(SIGNATURES_FILE_PATH) unless @signatures
             @signatures
         end
 
-        def self.load_signatures!
-            @signatures = []
-            signatures = JSON.load(File.read(SIGNATURES_FILE_PATH))
-            validate_signatures!(signatures)
-            signatures.each do |signature|
-                @signatures << Signature.new(signature)
+        def self.false_positive_signatures
+            @false_positive_signatures = load_signatures!(FALSE_POSITIVE_SIGNATURES_FILE_PATH) unless @false_positive_signatures
+            @false_positive_signatures
+        end
+
+        def self.load_signatures!(file_path)
+            signatures = []
+            _signatures = JSON.load(File.read(file_path))
+            validate_signatures!(_signatures)
+            _signatures.each do |signature|
+                signatures << Signature.new(signature)
             end
+            signatures
         rescue CorruptSignaturesError => e
             raise e
         rescue StandardError
@@ -561,22 +568,6 @@ module Gitrob
 
         def self.unload_signatures
             @signatures = []
-        end
-
-        def self.custom_signatures?
-            File.exist?(CUSTOM_SIGNATURES_FILE_PATH)
-        end
-
-        def self.load_custom_signatures!
-            signatures = JSON.load(File.read(CUSTOM_SIGNATURES_FILE_PATH))
-            validate_signatures!(signatures)
-            signatures.each do |signature|
-                @signatures << Signature.new(signature)
-            end
-        rescue CorruptSignaturesError => e
-            raise e
-        rescue StandardError
-            raise CorruptSignaturesError, 'Could not parse signature file'
         end
 
         def self.validate_signatures!(signatures)
@@ -663,7 +654,7 @@ module Gitrob
             findings = []
             blob_string.each_line.with_index(1) do |haystack, index|
                 next unless regex.match(haystack)
-
+                next if false_positive?(haystack, blob.extension)
                 findings <<
                     {
                         caption: signature.caption,
@@ -692,4 +683,16 @@ end
 def binary_extension?(path)
     extension = File.extname(File.basename(path)).strip.downcase[1..-1]
     BINARY_EXTENSIONS.include? extension
+end
+
+def false_positive?(haystack, extension)
+    false_positive_signatures.each do |signature|
+        unless signature.extension_pattern.nil?
+            regex = Regexp.new(signature.extension_pattern, Regexp::IGNORECASE)
+            next unless regex.match(extension.nil? ? "" : extension)
+        end
+        regex = Regexp.new(signature.pattern, Regexp::IGNORECASE)
+        return true if regex.match(haystack)
+    end
+    false
 end
