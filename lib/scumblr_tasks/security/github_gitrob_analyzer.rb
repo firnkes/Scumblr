@@ -86,7 +86,7 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
 
         # Only let one type of search be defined
         if @options[:user].present? && @options[:repo].present?
-            create_event('Both user/originzation and repo provided, defaulting to user/originzation.')
+            create_event('Both user/originzation and repo provided, defaulting to user/originzation.', "Warn")
             @search_scope = @options[:user]
             @search_type = :user
         # Append any repos to the search scope
