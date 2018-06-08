@@ -200,7 +200,6 @@ class TasksController < ApplicationController
       else
         TaskRunner.perform_async(@task.id, task_params, current_user_id: current_user.id)
       end
-      @task.events << Event.create(field: "Task", action: "Run", user_id: current_user.id)
       respond_to do |format|
         format.html {redirect_to task_url(@task), :notice=>"Running task..."}
       end
@@ -210,11 +209,7 @@ class TasksController < ApplicationController
 
       task_ids = Task.accessible_by(current_ability).where(enabled:true, run_type: "scheduled").map{|s| s.id}
       TaskRunner.perform_async(task_ids, nil, current_user_id: current_user.id)
-      events = []
-      task_ids.each do |s|
-        events << Event.new(date: Time.now, field: "Task", action: "Run", user_id: current_user.id, eventable_type: "Task", eventable_id: s)
-      end
-      Event.import events
+
 
       respond_to do |format|
         format.html {redirect_to tasks_url, :notice=>"Running all tasks..."}
@@ -310,7 +305,6 @@ class TasksController < ApplicationController
           task = Task.accessible_by(current_ability).find_by_id(t)
           if(task)
             valid_tasks << t
-            events << Event.new(date: Time.now, action: "Run", user_id: current_user.id, eventable_type:"Task", eventable_id: t)
           end
         end
         TaskRunner.perform_async(valid_tasks, nil, current_user_id: current_user.id)
