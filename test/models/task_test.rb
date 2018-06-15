@@ -30,8 +30,10 @@ class TaskTest < ActiveSupport::TestCase
   end
 
   test "should schedule task" do
+    fixture_task.current_user = User.new()
     fixture_task.schedule_with_params("*", "1", "*", "*", "*")
     assert_equal("* 1 * * *", fixture_task.frequency)
+    fixture_task.current_user = nil
   end
 
   test "should unschedule task" do

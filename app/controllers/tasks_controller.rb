@@ -337,7 +337,9 @@ class TasksController < ApplicationController
         day_of_week = params[:day_of_week] || "*"
 
         task_ids.each do |s|
-          Task.find(s).schedule_with_params(minute, hour, day, month, day_of_week)
+          t = Task.find(s);
+          t.current_user = current_user
+          t.schedule_with_params(minute, hour, day, month, day_of_week)
           events << Event.new(date: Time.now, action: "Scheduled", user_id: current_user.id, eventable_type:"Task", eventable_id: s)
         end
 
