@@ -72,7 +72,7 @@ $(function(){
     </nav>
     <section class="panel sidepanel">
       <%= form_tag bulk_update_tasks_path, method: :post, :id=>"update_multiple_form" do %>
-        <dl class="dl-horizontal">
+        <dl class="dl-horizontal hidden">
           <dt class="half">Move to:</dt>
           <dd>
             <a href="#" data-dropdown="drop_move" class="button dropdown tiny secondary">Choose group</a><br>
