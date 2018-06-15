@@ -25,7 +25,7 @@
     <%= f.check_box :enabled %> <%= f.label :enabled %>
   </div>
 
-  <div class="field">
+  <div class="field hidden">
     <%= check_box_tag :on_demand, "1", @task.run_type == "on_demand", {class: "hide-toggle on-demand-toggle", data:{toggle:".on-demand-optons"}} %> <%= f.label :on_demand do %>On demand <span data-tooltip aria-haspopup="true" class="has-tip tip-right" title="On-demand task are not run on a schedule but only when triggered via an API call."><i class="fi-info"></i></span><% end %>
   </div>
 
