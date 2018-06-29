@@ -117,7 +117,7 @@ class ResultsController < ApplicationController
   # GET /results.json
   def index
     @menu_item = "results"
-    @index_columns = session[:results_index_columns] || Rails.configuration.try(:results_index_columns) || [:screenshot,:title, :status_id, :domain, :link, :created_at, :updated_at]
+    @index_columns = session[:results_index_columns] || Rails.configuration.try(:results_index_columns) || [:screenshot, :title, :findings, :status_id, :domain, :link, :created_at, :updated_at]
     perform_search
 
 
@@ -954,10 +954,8 @@ class ResultsController < ApplicationController
 
     @view = session[:results_view]
 
-    include_metadata = false
-    if params[:include_metadata] == "true"
-      options[:include_metadata_column] = true
-    end
+
+     options[:include_metadata_column] = true
 
     if(params[:commit] == "Clear Search")
       session.delete(:saved_search)
