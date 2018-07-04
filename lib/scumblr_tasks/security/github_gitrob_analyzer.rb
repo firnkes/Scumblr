@@ -415,13 +415,33 @@ module Gitrob
                 utf8blob
             end
 
-            def get_blobs(repository)
+            def get_blobs(repository, sha = nil)
+                url = "/repos/#{repository[:full_name]}/git/trees/#{repository[:default_branch]}"
+                url = url + "/#{sha}" unless sha.nil?
+                resp =
                 github_client do |client|
                     client.get_request(
-                        "/repos/#{repository[:full_name]}/git/trees/" \
-            "#{repository[:default_branch]}",
+                        url,
                         ::Github::ParamsHash.new(recursive: 1)
-                    )['tree'].select { |b| b['type'] == 'blob' }
+                    )
+                end
+                if resp['truncated']
+                    resp = github_client do |client|
+                                client.get_request(
+                                    url,
+                                    ::Github::ParamsHash.new(recursive: 0)
+                                )
+                    end
+                    if resp['truncated']
+                        raise ScumblrTask::TaskException, 'Could not receive all files from github. Too many files for rest api request.'
+                    end
+                    blobs = resp['tree'].select { |b| b['type'] == 'blob' }
+                    resp['tree'].select{ |b| b['type'] == 'tree' }.each do |t|
+                        blobs += get_blobs(repository, t['sha'])
+                    end
+                    return blobs
+                else
+                    return resp['tree'].select { |b| b['type'] == 'blob' }
                 end
             end
 
