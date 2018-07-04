@@ -15,7 +15,7 @@
     <%= yield :before_accordion_content %>
     <% content_for :before_accordion_content, flush: true do "" end %>
 
-    
+
 
     <div class="panel content" id="<%= "partial_#{accordion_id}_container"%>">
       <%= yield :pre_content %>
@@ -27,7 +27,15 @@
       <%= yield :post_content %>
       <% content_for :post_content, flush: true do "" end %>
     </div>
-    
-    
+
+
   </dd>
 </dl>
+<%= javascript_tag do %>
+    $(document).ready(function() {
+        var findings = $('#result_details > dl > dd > a');
+        if(findings){
+            findings.first().trigger('click');
+        }
+    });
+<% end %>
