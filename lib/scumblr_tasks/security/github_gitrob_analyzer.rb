@@ -8,6 +8,8 @@ require 'byebug'
 BINARY_EXTENSIONS_FILE_PATH = File.join(File.dirname(__FILE__), '../../helpers/binary_extensions.json')
 BINARY_EXTENSIONS = JSON.parse(File.read(BINARY_EXTENSIONS_FILE_PATH))
 
+MAX_RETRY_DOWNLOAD_BLOB = 3
+
 class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
     def self.task_type_name
         'Github Gitrob Code Search'
@@ -392,13 +394,25 @@ module Gitrob
                 # after downloading the file is still needed.
                 return '' if binary_extension?(blob.path)
 
+
                 utf8blob = ''
+
                 github_client do |client|
-                    b64blob = client.get_request(blob.url)['content']
-                    utf8blob = Base64.decode64(b64blob).encode(
-                        Encoding.find('UTF-8'),
-                        invalid: :replace, undef: :replace, replace: ''
-                    )
+                    for i in 1..MAX_RETRY_DOWNLOAD_BLOB
+                        begin
+                            b64blob = client.get_request(blob.url)['content']
+                            utf8blob = Base64.decode64(b64blob).encode(
+                                Encoding.find('UTF-8'),
+                                invalid: :replace, undef: :replace, replace: ''
+                            )
+                        rescue
+                            if i ==  MAX_RETRY_DOWNLOAD_BLOB
+                                raise
+                            end
+                        else
+                            break
+                        end
+                    end
                 end
 
                 # binary files create encoding issues and it makes no sense to use regex on them
