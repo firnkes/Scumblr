@@ -32,11 +32,6 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
                     type: :choice,
                     default: :observation,
                     choices: %i[observation high medium low] },
-        max_results: { name: 'Limit search results',
-                       description: 'Limit search results.',
-                       required: true,
-                       default: '200',
-                       type: :string },
         user: { name: 'Scope to User Or Organization',
                 description: 'Limit search to an Organization or User.',
                 required: false,
@@ -75,8 +70,6 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
             puts "A key suffix was provided: #{@key_suffix}."
         end
 
-        # Set the max results if specified, otherwise default to 200 results
-        @options[:max_results] = @options[:max_results].to_i > 0 ? @options[:max_results].to_i : 200
 
         # Check that they actually specified a repo or org.
         unless @options[:user].present? || @options[:repo].present?
@@ -273,8 +266,7 @@ module Gitrob
                     endpoint: @config[:endpoint],
                     ssl: @config[:ssl],
                     user_agent: USER_AGENT,
-                    auto_pagination: true
-                )
+                    auto_pagination: true)
             end
         end
     end
