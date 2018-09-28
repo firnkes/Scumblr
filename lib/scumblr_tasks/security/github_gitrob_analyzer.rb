@@ -4,6 +4,7 @@ require 'json'
 require 'rest-client'
 require 'time'
 require 'byebug'
+require 'digest'
 
 BINARY_EXTENSIONS_FILE_PATH = File.join(File.dirname(__FILE__), '../../helpers/binary_extensions.json')
 BINARY_EXTENSIONS = JSON.parse(File.read(BINARY_EXTENSIONS_FILE_PATH))
@@ -54,7 +55,11 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
                                       description: "Custom configurable endpoint for Github Enterprise deployments. Overwrites other endpoint configurations. Must point to an api endpoint, e.g.
         'https://github.wdf.sap.corp/api/v3'",
                                       required: false,
-                                      type: :string }
+                                      type: :string },
+        deep_search: {  name: 'Deep Search',
+                        description: 'Searches all commits of a branch.',
+                        type: :boolean,
+                        default: false}
     }
     end
 
@@ -92,6 +97,8 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
             @search_scope = @options[:user]
             @search_type = :user
         end
+
+        @deep_search = @options[:deep_search]
     end
 
     def run
@@ -125,7 +132,14 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         repo = data_manager.get_repository(owner_repo[0], owner_repo[1])
         raise ScumblrTask::TaskException, 'Repository not found.' if repo.nil?
 
-        results = analyze_blobs(data_manager.blobs_for_repository(repo), repo, owner_repo[0], data_manager)
+        blobs = []
+        if @deep_search.to_i == 1
+            blobs = create_blobs_for_history(repo, data_manager)
+        else
+            blobs = create_blobs_for_current_state(repo, data_manager)
+        end
+
+        results = analyze_blobs(blobs)
         report_results(results, repo)
     end
 
@@ -138,24 +152,62 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
 
         data_manager.owners.each do |owner|
             data_manager.repositories_for_owner(owner).each do |repo|
-                results = analyze_blobs(data_manager.blobs_for_repository(repo), repo, owner, data_manager)
-                report_results(results, repo)
+                analyze_repository(repo.full_name, data_manager)
             end
         end
     end
 
-    def analyze_blobs(blobs, repo, owner, data_manager)
-        results = []
-        blobs.each do |blob|
+    def create_blobs_for_current_state (repo, data_manager)
+        blobs = []
+        data_manager.blobs_for_repository(repo).each do |blob|
             blob_string = data_manager.blob_string_for_blob_repo(blob)
-
             allowed_columns = Gitrob::Models::Blob.allowed_columns
             data = blob.select { |k, _v| allowed_columns.include?(k.to_sym) }
-            db_blob = Gitrob::Models::Blob.new(data)
-            db_blob.repository = repo
-            db_blob.owner = owner
+            data['content'] = blob_string
+            data['modified'] = False
+            data['is_diff'] = False
 
-            result = Gitrob::BlobObserver.observe(db_blob, blob_string)
+            blobs.push(create_blob(data, repo))
+        end
+        blobs
+    end
+
+    def create_blobs_for_history(repo, data_manager)
+        blobs = []
+        commits = data_manager.commits_for_repository(repo)
+
+        commits.each do |c|
+            commit = data_manager.get_commit_details(repo, c)
+            commit['files'].each do |file|
+                data = {
+                    'path' => file['filename'],
+                    'size' => commit['stats']['total'],
+                    'sha' => commit['sha'],
+                    'content' => get_diff(file['patch']),
+                    'modified' => file['status'] == 'modified',
+                    'is_diff' => true
+                }
+                md5 = Digest::MD5.hexdigest(data['path'])
+                data['url'] = commit['html_url'] + "#diff-#{md5}"
+                blobs.push(create_blob(data, repo))
+            end
+        end
+        blobs
+    end
+
+
+
+    def create_blob(data, repo)
+        blob = Gitrob::Models::Blob.new(data)
+        blob.repository = repo
+        blob.owner = repo['owner']['login']
+        return blob
+    end
+
+    def analyze_blobs(blobs)
+        results = []
+        blobs.each do |blob|
+            result = Gitrob::BlobObserver.observe(blob)
             results += result unless result.empty?
         end
         results
@@ -268,7 +320,8 @@ module Gitrob
                     endpoint: @config[:endpoint],
                     ssl: @config[:ssl],
                     user_agent: USER_AGENT,
-                    auto_pagination: true)
+                    auto_pagination: true,
+                    per_page: 100)
             end
         end
     end
@@ -352,6 +405,32 @@ module Gitrob
                 []
             end
 
+            def commits_for_repository(repository)
+                get_commits(repository)
+            rescue ::Github::Error::Forbidden => e
+                # Hidden GitHub feature?
+                raise e unless e.message.include?('403 Repository access blocked')
+                []
+            rescue ::Github::Error::NotFound
+                []
+            rescue ::Github::Error::ServiceError => e
+                raise e unless e.message.include?('409 Git Repository is empty')
+                []
+            end
+
+            def get_commit_details(repo, commit)
+                get_commit(repo, commit)
+            rescue ::Github::Error::Forbidden => e
+                # Hidden GitHub feature?
+                raise e unless e.message.include?('403 Repository access blocked')
+                []
+            rescue ::Github::Error::NotFound
+                []
+            rescue ::Github::Error::ServiceError => e
+                raise e unless e.message.include?('409 Git Repository is empty')
+                []
+            end
+
             private
 
             def get_owner(login)
@@ -410,7 +489,7 @@ module Gitrob
                                 raise
                             end
                         else
-                            break
+                            next
                         end
                     end
                 end
@@ -451,6 +530,42 @@ module Gitrob
                 end
             end
 
+            def get_commits(repo)
+                for i in 1..MAX_RETRY_DOWNLOAD_BLOB
+                    begin
+                        resp =
+                        github_client do |client|
+                            client.repos.commits.list(repo['owner']['login'], repo['name'])
+                        end
+                        return resp.map{|c| c['sha']}.compact
+                    rescue
+                        if i == MAX_RETRY_DOWNLOAD_BLOB
+                            raise
+                        end
+                    else
+                        next
+                    end
+                end
+            end
+
+            def get_commit(repo, commit)
+                for i in 1..MAX_RETRY_DOWNLOAD_BLOB
+                    begin
+                        resp =
+                        github_client do |client|
+                            client.repos.commits.get(repo['owner']['login'], repo['name'], commit)
+                        end
+                        return resp
+                    rescue
+                        if i == MAX_RETRY_DOWNLOAD_BLOB
+                            raise
+                        end
+                    else
+                        next
+                    end
+                end
+            end
+
             def github_client
                 client = @client_manager.sample
                 yield client
@@ -477,9 +592,8 @@ module Gitrob
         class Blob
             SHA_REGEX = /[a-f0-9]{40}/
             TEST_BLOB_INDICATORS = %w[test spec fixture mock stub fake demo sample].freeze
-            LARGE_BLOB_THRESHOLD = 102_400
 
-            attr_accessor :repository, :owner
+            attr_accessor :repository, :owner, :content, :html_url, :modified, :is_diff
             attr_reader :path
 
             def initialize(data)
@@ -487,10 +601,13 @@ module Gitrob
                 @size = data['size']
                 @sha = data['sha']
                 @content = data['content']
+                @html_url = data['url']
+                @modified = data['modified']
+                @is_diff = data['is_diff']
             end
 
             def self.allowed_columns
-                %i[path size sha content]
+                %i[path size sha content url]
             end
 
             def validate
@@ -512,18 +629,6 @@ module Gitrob
                     return true if path.downcase.include?(indicator)
                 end
                 false
-            end
-
-            def html_url
-                "#{repository.html_url}/blob/#{repository.default_branch}/#{path}"
-            end
-
-            def history_html_url
-                "#{repository.html_url}/commits/#{repository.default_branch}/#{path}"
-            end
-
-            def large?
-                size.to_i > LARGE_BLOB_THRESHOLD
             end
         end
     end
@@ -548,20 +653,22 @@ module Gitrob
         class CorruptSignaturesError < StandardError
         end
 
-        def self.observe(blob, blob_string)
+        def self.observe(blob)
             blob_findings = []
             signatures.each do |signature|
                 if signature.part == 'content'
-                    if !blob_string.nil? && !blob_string.empty?
-                        findings = observe_with_content_regex_signature(blob, signature, blob_string)
+                    if blob.content && !blob.content.empty?
+                        findings = observe_with_content_regex_signature(blob, signature)
                         blob_findings += findings unless findings.empty?
                     end
                 else
-                    finding = if signature.type == 'match'
-                                  observe_with_match_signature(blob, signature)
-                              else
-                                  observe_with_regex_signature(blob, signature)
-                              end
+                     next if blob.modified # prevents multiple detections of same file name
+
+                     if signature.type == 'match'
+                        finding = observe_with_match_signature(blob, signature)
+                     else
+                        finding = observe_with_regex_signature(blob, signature)
+                     end
                     blob_findings << finding unless finding.nil?
                 end
             end
@@ -669,7 +776,7 @@ module Gitrob
             }
         end
 
-        def self.observe_with_content_regex_signature(blob, signature, blob_string)
+        def self.observe_with_content_regex_signature(blob, signature)
             # check extension_regex
             unless signature.extension_pattern.nil?
                 regex = Regexp.new(signature.extension_pattern, Regexp::IGNORECASE)
@@ -678,7 +785,8 @@ module Gitrob
 
             regex = Regexp.new(signature.pattern, Regexp::IGNORECASE)
             findings = []
-            blob_string.each_line.with_index(1) do |haystack, index|
+            line_part = blob.is_diff ? "R" : "#L"
+            blob.content.each_line.with_index(1) do |haystack, index|
                 next unless regex.match(haystack)
                 next if false_positive?(haystack, blob.extension)
                 findings <<
@@ -686,7 +794,7 @@ module Gitrob
                         caption: signature.caption,
                         description: signature.description,
                         file_name: blob.filename,
-                        url: blob.html_url + "#L#{index}",
+                        url: blob.html_url + "#{line_part}#{index}",
                         code_fragment: haystack,
                         part: signature.part,
                         line: index,
@@ -721,4 +829,11 @@ def false_positive?(haystack, extension)
         return true if regex.match(haystack)
     end
     false
+end
+
+def get_diff(patch)
+    if patch.nil?
+        patch = ""
+    end
+    patch.split().select{|line| line.start_with?('-','+')}.join("\n")
 end
