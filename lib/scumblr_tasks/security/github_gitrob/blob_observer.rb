@@ -20,6 +20,7 @@ module Gitrob
 
         def self.observe(blob)
             blob_findings = []
+            return blob_findings if blob.test_blob?
             signatures.each do |signature|
                 if signature.part == 'content'
                     if blob.content && !blob.content.empty?
