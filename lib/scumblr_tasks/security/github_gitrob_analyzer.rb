@@ -183,7 +183,7 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
                     'size' => commit['stats']['total'],
                     'sha' => commit['sha'],
                     'content' => file['patch'],
-                    'modified' => file['status'] == 'modified',
+                    'added' => file['status'] == 'added',
                 }
                 md5 = Digest::MD5.hexdigest(data['path'])
                 data['url'] = commit['html_url'] + "#diff-#{md5}"

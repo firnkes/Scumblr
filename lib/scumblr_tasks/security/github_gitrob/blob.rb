@@ -2,7 +2,7 @@
 module Gitrob
     class AbstractBlob
         SHA_REGEX = /[a-f0-9]{40}/
-        TEST_BLOB_INDICATORS = %w[test spec fixture mock stub fake demo sample].freeze
+        TEST_BLOB_INDICATORS = %w[test spec fixture mock stub fake demo sample dummy].freeze
 
         attr_accessor :repository, :owner, :content, :html_url
         attr_reader :path
@@ -11,7 +11,6 @@ module Gitrob
             @path = data['path']
             @size = data['size']
             @sha = data['sha']
-            @content = data['content']
             @html_url = data['url']
         end
 
@@ -36,44 +35,63 @@ module Gitrob
             false
         end
 
-        def url_line_token
-            raise NotImplementedError.new("#{self.class.name}#area is anabstract method.")
+        def url_line_part(_entry)
+            raise NotImplementedError, "#{self.class.name}#area is an abstract method."
         end
 
         def should_observe_path
-            raise NotImplementedError.new("#{self.class.name}#area is anabstract method.")
+            raise NotImplementedError, "#{self.class.name}#area is an abstract method."
         end
     end
 
     class DiffBlob < AbstractBlob
-
         def initialize(data)
-            data['content'] = get_diff(data['content'])
             super(data)
-            @modified = data['modified']
+            @added = data['added']
+            @content = interpret_diff(data['content'])
         end
 
-        def get_diff(patch)
-            patch = '' if patch.nil?
-            patch.split.select { |line| line.start_with?('-', '+') }.join("\n")
+        def interpret_diff(patch)
+            return [] if patch.nil? || patch.blank?
+            lines = patch.lines
+
+            start_line_right = /\+(\d*)/.match(lines.first)[0].to_i
+
+            right = lines.reject { |l| l.start_with?('-', '@@') }
+
+            content = right.map.with_index(start_line_right) { |line, index| Gitrob::Line.new(index, line) }.select { |l| l.content.start_with?('+') }.each { |l| l.content[0] = '' }
+            content
         end
 
-        def url_line_token
-            "R"
+        def url_line_part(line)
+            "R#{line.line_number}"
         end
 
         def should_observe_path
-            return !@modified
+            !@added
         end
     end
 
     class Blob < AbstractBlob
-        def url_line_token
-            "#L"
+        def initialize(data)
+            super(data)
+            @content = data['content'].each_line.map.with_index(1) { |line, index| Gitrob::Line.new(index, line) }.reject { |h| h.content.blank? }
+        end
+
+        def url_line_part(line)
+            "#L#{line.line_number}"
         end
 
         def should_observe_path
-            return true
+            true
+        end
+    end
+
+    class Line
+        attr_accessor :line_number, :content
+        def initialize(line_number, content)
+            @line_number = line_number
+            @content = content
         end
     end
 end

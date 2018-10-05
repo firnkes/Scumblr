@@ -226,7 +226,7 @@ def retry_github_call
         yield
     rescue
         retries += 1
-        Rails.logger.debug("Github call retry number :" + retries)
+        Rails.logger.debug("Github call retry number : #{retries}")
         retry if (retries <= MAX_RETRY_DOWNLOAD_BLOB)
         raise
     end
