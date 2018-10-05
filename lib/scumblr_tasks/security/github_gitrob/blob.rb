@@ -35,7 +35,7 @@ module Gitrob
             false
         end
 
-        def url_line_part(_entry)
+        def url_line_part(line)
             raise NotImplementedError, "#{self.class.name}#area is an abstract method."
         end
 
