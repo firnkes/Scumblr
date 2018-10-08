@@ -47,7 +47,7 @@ module Gitrob
     class DiffBlob < AbstractBlob
         def initialize(data)
             super(data)
-            @added = data['added']
+            @status = data['status']
             @content = interpret_diff(data['content'])
         end
 
@@ -68,7 +68,7 @@ module Gitrob
         end
 
         def should_observe_path
-            !@added
+            @status == "added" || @status == "renamed"
         end
     end
 
