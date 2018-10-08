@@ -64,7 +64,7 @@ module Gitrob
                     client.repos.branches.list(
                         user: user,
                         repo: repo
-                    )
+                    ).map{|b| b.name}.compact
                 end
             end
 

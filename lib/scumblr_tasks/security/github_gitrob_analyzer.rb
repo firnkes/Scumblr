@@ -62,8 +62,12 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
             deep_search: { name: 'Deep Search',
                            description: 'Searches all commits of a branch. Increases the task run time.',
                            type: :boolean,
-                           default: false }
-        }
+                           default: false },
+            all_branches: { name: 'Search all Branches',
+                          description: 'Searches all branches. Increases the task run time.',
+                          type: :boolean,
+                          default: false }
+}
     end
 
     def initialize(options = {})
@@ -103,6 +107,7 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         end
 
         @deep_search = @options[:deep_search]
+        @scan_all_branches = @options[:all_branches]
     end
 
     def run
@@ -136,24 +141,29 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         repo = data_manager.get_repository(owner_repo[0], owner_repo[1])
         raise ScumblrTask::TaskException, 'Repository not found.' if repo.nil?
 
-        branch = repo.default_branch
-        if !@branch.nil?
-            branches = data_manager.get_branches(owner_repo[0], owner_repo[1])
-            if !branches.select{|b| b.name == @branch}.empty?
-                branch = @branch
+        branches = [repo.default_branch]
+        scan_all_branches = @scan_all_branches.to_i == 1
+
+        if (!@branch.nil? || scan_all_branches)
+            all_branches = data_manager.get_branches(owner_repo[0], owner_repo[1])
+            if scan_all_branches
+                branches = all_branches
+            elsif !all_branches.select{|b| b == @branch}.empty?
+                branches = [@branch]
             else
                 raise ScumblrTask::TaskException, 'Branch not found.'
             end
         end
 
-        blobs = []
-        blobs = if deep_search.to_i == 1
-                    create_blobs_for_history(repo, branch, data_manager)
-                else
-                    create_blobs_for_current_state(repo, branch, data_manager)
-                end
-
-        results = observe_blobs(blobs)
+        results = []
+        branches.each do |b|
+            blobs = if deep_search.to_i == 1
+                        create_blobs_for_history(repo, b, data_manager)
+                    else
+                        create_blobs_for_current_state(repo, b, data_manager)
+                    end
+            results += observe_blobs(blobs)
+        end
         report_results(results, repo)
     end
 
