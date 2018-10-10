@@ -43,6 +43,10 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
                     description: "Limit search to a Repository. Full name with owner of repository is required. Schema ':owner/:repo'",
                     required: false,
                     type: :string },
+            branch: { name: 'Scope to Branch',
+                    description: "Set branch to be searched. If not set, default branch of repository is used. Has no effect if scope is not a single repository.",
+                    required: false,
+                    type: :string },
             github_api_endpoint: { name: 'Github Endpoint',
                                    description: 'Configurable endpoint for Github Enterprise deployments',
                                    required: true,
@@ -58,8 +62,12 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
             deep_search: { name: 'Deep Search',
                            description: 'Searches all commits of a branch. Increases the task run time.',
                            type: :boolean,
-                           default: false }
-        }
+                           default: false },
+            all_branches: { name: 'Search all Branches',
+                          description: 'Searches all branches. Increases the task run time.',
+                          type: :boolean,
+                          default: false }
+}
     end
 
     def initialize(options = {})
@@ -70,6 +78,7 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
 
         @search_type = nil
         @search_scope = nil
+        @branch = nil
         # End of remove
         if @options[:key_suffix].present?
             @key_suffix = '_' + @options[:key_suffix].to_s.strip
@@ -91,12 +100,14 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         elsif @options[:repo].present?
             @search_scope = @options[:repo]
             @search_type = :repo
+            @branch = @options[:branch] if @options[:branch].present?
         elsif @options[:user].present?
             @search_scope = @options[:user]
             @search_type = :user
         end
 
         @deep_search = @options[:deep_search]
+        @scan_all_branches = @options[:all_branches]
     end
 
     def run
@@ -130,14 +141,29 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         repo = data_manager.get_repository(owner_repo[0], owner_repo[1])
         raise ScumblrTask::TaskException, 'Repository not found.' if repo.nil?
 
-        blobs = []
-        blobs = if deep_search.to_i == 1
-                    create_blobs_for_history(repo, data_manager)
-                else
-                    create_blobs_for_current_state(repo, data_manager)
-                end
+        branches = [repo.default_branch]
+        scan_all_branches = @scan_all_branches.to_i == 1
 
-        results = observe_blobs(blobs)
+        if (!@branch.nil? || scan_all_branches)
+            all_branches = data_manager.get_branches(owner_repo[0], owner_repo[1])
+            if scan_all_branches
+                branches = all_branches
+            elsif !all_branches.select{|b| b == @branch}.empty?
+                branches = [@branch]
+            else
+                raise ScumblrTask::TaskException, 'Branch not found.'
+            end
+        end
+
+        results = []
+        branches.each do |b|
+            blobs = if deep_search.to_i == 1
+                        create_blobs_for_history(repo, b, data_manager)
+                    else
+                        create_blobs_for_current_state(repo, b, data_manager)
+                    end
+            results += observe_blobs(blobs)
+        end
         report_results(results, repo)
     end
 
@@ -155,12 +181,12 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         end
     end
 
-    def create_blobs_for_current_state(repo, data_manager)
+    def create_blobs_for_current_state(repo, branch, data_manager)
         blobs = []
-        data_manager.blobs_for_repository(repo).each do |data|
+        data_manager.blobs_for_repository(repo, branch).each do |data|
             blob_string = data_manager.blob_string_for_blob_repo(data)
             data['content'] = blob_string
-            data['url'] = "#{repo.html_url}/blob/#{repo.default_branch}/#{data['path']}"
+            data['url'] = "#{repo.html_url}/blob/#{branch}/#{data['path']}"
 
             blob = Gitrob::Blob.new(data)
             blob.repository = repo
@@ -171,9 +197,9 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         blobs
     end
 
-    def create_blobs_for_history(repo, data_manager)
+    def create_blobs_for_history(repo, branch, data_manager)
         blobs = []
-        commits = data_manager.commits_for_repository(repo)
+        commits = data_manager.commits_for_repository(repo, branch)
 
         commits.each do |c|
             commit = data_manager.get_commit_details(repo, c)
@@ -183,7 +209,7 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
                     'size' => commit['stats']['total'],
                     'sha' => commit['sha'],
                     'content' => file['patch'],
-                    'modified' => file['status'] == 'modified',
+                    'status' => file['status']
                 }
                 md5 = Digest::MD5.hexdigest(data['path'])
                 data['url'] = commit['html_url'] + "#diff-#{md5}"

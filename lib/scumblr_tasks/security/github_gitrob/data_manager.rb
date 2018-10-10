@@ -59,16 +59,25 @@ module Gitrob
                 return nil
             end
 
+            def get_branches(user, repo)
+                github_client do |client|
+                    client.repos.branches.list(
+                        user: user,
+                        repo: repo
+                    ).map{|b| b.name}.compact
+                end
+            end
+
             def blob_string_for_blob_repo(blob)
                 try_github_api_call{ download_blob(blob) }
             end
 
-            def blobs_for_repository(repository)
-                try_github_api_call{ get_blobs(repository) }
+            def blobs_for_repository(repository, branch)
+                try_github_api_call{ get_blobs(repository, branch) }
             end
 
-            def commits_for_repository(repository)
-                try_github_api_call{ get_commits(repository) }
+            def commits_for_repository(repository, branch)
+                try_github_api_call{ get_commits(repository, branch) }
             end
 
             def get_commit_details(repo, commit)
@@ -136,8 +145,8 @@ module Gitrob
                 utf8blob
             end
 
-            def get_blobs(repository, sha = nil)
-                url = "/repos/#{repository[:full_name]}/git/trees/#{repository[:default_branch]}"
+            def get_blobs(repository, branch, sha = nil)
+                url = "/repos/#{repository[:full_name]}/git/trees/#{branch}"
                 url = url + "/#{sha}" unless sha.nil?
                 resp =
                 github_client do |client|
@@ -158,7 +167,7 @@ module Gitrob
                     end
                     blobs = resp['tree'].select { |b| b['type'] == 'blob' }
                     resp['tree'].select{ |b| b['type'] == 'tree' }.each do |t|
-                        blobs += get_blobs(repository, t['sha'])
+                        blobs += get_blobs(repository, branch, t['sha'])
                     end
                     return blobs
                 else
@@ -166,11 +175,11 @@ module Gitrob
                 end
             end
 
-            def get_commits(repo)
+            def get_commits(repo, branch)
                 retry_github_call{
                         resp =
                         github_client do |client|
-                            client.repos.commits.list(repo['owner']['login'], repo['name'])
+                            client.repos.commits.list(repo['owner']['login'], repo['name'], sha: branch)
                         end
                         return resp.map{|c| c['sha']}.compact
                 }
@@ -226,7 +235,7 @@ def retry_github_call
         yield
     rescue
         retries += 1
-        Rails.logger.debug("Github call retry number :" + retries)
+        Rails.logger.debug("Github call retry number : #{retries}")
         retry if (retries <= MAX_RETRY_DOWNLOAD_BLOB)
         raise
     end

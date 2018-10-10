@@ -20,6 +20,7 @@ module Gitrob
 
         def self.observe(blob)
             blob_findings = []
+            return blob_findings if blob.test_blob?
             signatures.each do |signature|
                 if signature.part == 'content'
                     if blob.content && !blob.content.empty?
@@ -150,16 +151,18 @@ module Gitrob
 
             regex = Regexp.new(signature.pattern, Regexp::IGNORECASE)
             findings = []
-            line_part = blob.url_line_token()
-            blob.content.each_line.with_index(1) do |haystack, index|
+            blob.content.each do |line|
+                haystack, index = line.content, line.line_number
                 next unless regex.match(haystack)
                 next if false_positive?(haystack, blob.extension)
+
+                line_part = blob.url_line_part(line)
                 findings <<
                     {
                         caption: signature.caption,
                         description: signature.description,
                         file_name: blob.filename,
-                        url: blob.html_url + "#{line_part}#{index}",
+                        url: blob.html_url + "#{line_part}",
                         code_fragment: haystack,
                         part: signature.part,
                         line: index,
