@@ -963,7 +963,6 @@ class ResultsController < ApplicationController
     params[:q] ||= {}
 
 
-
     params[:q].reverse_merge!(:status_id_includes_closed=>"0")
     if(Status.where(:closed=>true).count == 0)
       params[:q].delete(:status_id_includes_closed)
@@ -971,6 +970,11 @@ class ResultsController < ApplicationController
 
     if(params[:q][:status_id_includes_closed] == "0")
       params[:q].merge!({:g=>{"0"=>{m: "or", :status_id_null=> 1, :status_closed_not_eq=>true}}})
+    end
+
+    params[:q].reverse_merge!(:show_empty_results=>"0")
+    if(params[:q][:show_empty_results] == "0")
+        params[:q].merge!({:findings_gt => 0})
     end
 
     params[:q].reject! {|k,v| v.blank? || v==[""]} if params[:q]

@@ -41,3 +41,5 @@
 <% end %>
 <%= f.check_box :status_id_includes_closed, {class: "checkbox", "checked"=> params.try(:[],:q).try(:[],:status_id_includes_closed) == "1" ? "checked" : "" }, "1" %>
 <%= label_tag "Include closed?" %><br/>
+<%= f.check_box :show_empty_results, {class: "checkbox", "checked"=> params.try(:[],:q).try(:[],:show_empty_results) == "1" ? "checked" : "" }, "1" %>
+<%= label_tag "Include empty results?" %><br/>
