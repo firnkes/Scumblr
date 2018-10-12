@@ -876,7 +876,7 @@ class ResultsController < ApplicationController
       Event.create(field: "Metadata", details: "#{keys.join(":")} set to #{params[:value][i]}", new_value: params[:value][i] ,action: "Updated", user_id: current_user.id, eventable_type:"Result", eventable_id: params[:id]  )
       response = @result.traverse_and_update_metadata(keys, params[:value][i])
     end
-
+    @result.update_vulnerability_counts
     @result.save
 
     respond_to do |format|
@@ -884,38 +884,6 @@ class ResultsController < ApplicationController
       format.json { render json: response.to_json, layout: false}
     end
     return
-
-
-
-
-    @data = @result.metadata
-    params[:key].each_with_index do |key,index|
-      if(!/\A\d+\z/.match(key))
-        new_data = @data.try(:[],key)
-        if(new_data == nil)
-          if(index == params[:key].length - 1)
-            @data[key] = ""
-            @data = @data[key]
-          else
-            @data[key] = {}
-            @data = @data[key]
-          end
-        else
-          @data = new_data
-        end
-      else
-        @data = @data.try(:[],key.to_i)
-      end
-    end
-
-
-    @data.replace(params[:value])
-    @result.save
-
-    respond_to do |format|
-      format.js
-      format.json { render json: "{\"#{params[:key].last}\": #{@data.to_json}}", layout: false}
-    end
   end
 
 

@@ -1,1 +1,1 @@
-<%= result.metadata["vulnerabilities"].select{|v| Vulnerability.open_statuses.include?(v["status"].to_s.downcase)}.length %>
+<%= result.findings %>

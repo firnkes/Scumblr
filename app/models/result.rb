@@ -67,6 +67,14 @@ class Result < ActiveRecord::Base
     Rails.cache.fetch([name, id]) { find(id) }
   end
 
+  def findings
+      self.metadata["vulnerability_count"]["state"]["open"]
+  end
+
+  ransacker :findings do
+    Arel.sql("cast(results.metadata::json#>>'{vulnerability_count, state, open}' AS INTEGER)")
+  end
+
   def add_tags(tags)
 
     tags.each do |the_tag|
