@@ -13,6 +13,8 @@ module Gitrob
         ALLOWED_TYPES = %w[regex match].freeze
         ALLOWED_PARTS = %w[path filename extension content].freeze
 
+        SKIP_TEST_BLOBS = false
+
         class Signature < OpenStruct
         end
         class CorruptSignaturesError < StandardError
@@ -20,7 +22,7 @@ module Gitrob
 
         def self.observe(blob)
             blob_findings = []
-            return blob_findings if blob.test_blob?
+            return blob_findings if SKIP_TEST_BLOBS && blob.test_blob?
             signatures.each do |signature|
                 if signature.part == 'content'
                     if blob.content && !blob.content.empty?
