@@ -27,18 +27,21 @@ module Gitrob
             end
 
             def gather_owners
-                return unless owner = get_owner(@login)
+                owner = nil
+                retry_github_call{
+                    return unless owner = get_owner(@login)
+                }
                 @owners << owner
                 @repositories_for_owners[owner['login']] = []
                 return unless owner['type'] == 'Organization'
-                get_members(owner) if owner['type'] == 'Organization'
+                retry_github_call{ get_members(owner) } if owner['type'] == 'Organization'
 
                 @owners = @owners.uniq { |o| o['login'] }
             end
 
             def gather_repositories
                 owners.each do |owner|
-                    repositories = get_repositories(owner)
+                    repositories = retry_github_call { get_repositories(owner) }
                     save_repositories(owner, repositories)
                     yield owner, repositories if block_given?
                 end
@@ -49,23 +52,29 @@ module Gitrob
             end
 
             def get_repository(user, repo)
-                github_client do |client|
-                    client.repos.get(
-                        user: user,
-                        repo: repo
-                    )
-                end
-            rescue ::Github::Error::NotFound
-                return nil
+                retry_github_call{
+                    begin
+                    github_client do |client|
+                        client.repos.get(
+                            user: user,
+                            repo: repo
+                        )
+                    end
+                    rescue ::Github::Error::NotFound
+                        return nil
+                    end
+                }
             end
 
             def get_branches(user, repo)
-                github_client do |client|
-                    client.repos.branches.list(
-                        user: user,
-                        repo: repo
-                    ).map{|b| b.name}.compact
-                end
+                retry_github_call{
+                    github_client do |client|
+                        client.repos.branches.list(
+                            user: user,
+                            repo: repo
+                        ).map{|b| b.name}.compact
+                    end
+                }
             end
 
             def blob_string_for_blob_repo(blob)
@@ -148,20 +157,20 @@ module Gitrob
             def get_blobs(repository, branch, sha = nil)
                 url = "/repos/#{repository[:full_name]}/git/trees/#{branch}"
                 url = url + "/#{sha}" unless sha.nil?
-                resp =
+                resp = retry_github_call {
                 github_client do |client|
                     client.get_request(
                         url,
                         ::Github::ParamsHash.new(recursive: 1)
                     )
-                end
+                end }
                 if resp['truncated']
-                    resp = github_client do |client|
+                    resp = retry_github_call{ github_client do |client|
                                 client.get_request(
                                     url,
                                     ::Github::ParamsHash.new(recursive: 0)
                                 )
-                    end
+                    end }
                     if resp['truncated']
                         raise ScumblrTask::TaskException, 'Could not receive all files from github. Too many files for rest api request.'
                     end
@@ -235,9 +244,10 @@ def retry_github_call
         yield
     rescue
         retries += 1
+        raise if (retries > MAX_RETRY_DOWNLOAD_BLOB)
         Rails.logger.debug("Github call retry number : #{retries}")
-        retry if (retries <= MAX_RETRY_DOWNLOAD_BLOB)
-        raise
+        sleep(2**retries)
+        retry
     end
 end
 
