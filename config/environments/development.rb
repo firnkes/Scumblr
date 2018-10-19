@@ -18,8 +18,9 @@ Scumblr::Application.configure do
   # In the development environment your application's code is reloaded on
   # every request. This slows down response time but is perfect for development
   # since you don't have to restart the web server when you make code changes.
-  config.cache_classes = false
-  #config.cache_classes = true
+  # config.cache_classes = false
+  config.cache_classes = true
+
   config.active_record.raise_in_transactional_callbacks = true
   config.lograge.enabled = true
   config.lograge.custom_options = lambda do |event|
@@ -43,11 +44,11 @@ Scumblr::Application.configure do
   #Force raising callback errors
   config.active_record.raise_in_transactional_callbacks = true
 
-  config.eager_load = false
-  #config.eager_load = true
+  #config.eager_load = false
+  config.eager_load = true
 
   # Show full error reports and disable caching
-  config.consider_all_requests_local       = true
+  config.consider_all_requests_local       = false
   config.action_controller.perform_caching = true
 
   # Don't care if the mailer can't send
@@ -71,7 +72,7 @@ Scumblr::Application.configure do
   #config.active_record.auto_explain_threshold_in_seconds = 0.5
 
   # Do not compress assets
-  config.assets.compress = false
+  config.assets.compress = true
   config.assets.compile = true
 
   # Expands the lines which load the assets
