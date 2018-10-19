@@ -172,7 +172,7 @@ class ScumblrTask::GithubGitrobAnalyzer < ScumblrTask::Base
         raise ScumblrTask::TaskException, 'No user/orga found.' if data_manager.owners.empty?
 
         data_manager.gather_repositories
-        raise ScumblrTask::TaskException, 'No repositories for user/orga found.' if data_manager.repositories.empty?
+        return if data_manager.repositories.empty?
 
         data_manager.owners.each do |owner|
             data_manager.repositories_for_owner(owner).each do |repo|
