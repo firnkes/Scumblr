@@ -2,7 +2,7 @@
 <table>
   <tr>
     <th><%= link_to "&#9658;".html_safe, expandall_tasks_path(), :id => "expandall_arrow", :remote=>true %></th>
-    <th></th>
+    <th><%= check_box_tag "select_all", 'yes', false, {:id=>"check_all_results"} %></th>
     <th></th>
     <th>Name</th>
     <th>Task Type</th>
