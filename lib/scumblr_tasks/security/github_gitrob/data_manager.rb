@@ -4,8 +4,8 @@ require 'json'
 BINARY_EXTENSIONS_FILE_PATH = File.join(File.dirname(__FILE__), '../../../helpers/binary_extensions.json')
 BINARY_EXTENSIONS = JSON.parse(File.read(BINARY_EXTENSIONS_FILE_PATH))
 
-MAX_RETRY_DOWNLOAD_BLOB = 3
-
+MAX_RETRY_DOWNLOAD_BLOB = 10
+MAX_SLEEP = 60
 
 module Gitrob
     module Github
@@ -246,7 +246,7 @@ def retry_github_call
         retries += 1
         raise if (retries > MAX_RETRY_DOWNLOAD_BLOB)
         Rails.logger.debug("Github call retry number : #{retries}")
-        sleep(2**retries)
+        sleep([2**retries, MAX_SLEEP].min)
         retry
     end
 end
