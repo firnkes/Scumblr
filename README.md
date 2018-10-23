@@ -1,4 +1,13 @@
 # Scumblr
+This is a fork of: https://github.com/Netflix-Skunkworks/Scumblr/wiki
+Use this scanner to search one or several github repositories for credentials like passwords or private keys.
+
+See https://github.wdf.sap.corp/CPSecurity/scumblr-docker-compose on how to configure and run it.
+
+
+
+___
+
 
 ## What is Scumblr 2?
 Scumblr is a web application that allows performing periodic syncs of data sources (such as Github repositories and URLs) and performing analysis (such as static analysis, dynamic checks, and metadata collection) on the identified results. Scumblr helps you streamline proactive security through an intelligent automation framework to help you identify, track, and resolve security issues faster.  
