@@ -1,5 +1,5 @@
 # Scumblr
-This is a fork of: https://github.com/Netflix-Skunkworks/Scumblr/wiki
+This is a fork of: https://github.com/Netflix-Skunkworks/Scumblr/wiki  
 Use this scanner to search one or several github repositories for credentials like passwords or private keys.
 
 See https://github.wdf.sap.corp/CPSecurity/scumblr-docker-compose on how to configure and run it.
