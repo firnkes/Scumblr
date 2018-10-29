@@ -4,8 +4,8 @@ module Gitrob
         SHA_REGEX = /[a-f0-9]{40}/
         TEST_BLOB_INDICATORS = %w[test spec fixture mock stub fake demo sample dummy].freeze
 
-        attr_accessor :repository, :owner, :content, :html_url
-        attr_reader :path
+        attr_accessor :repository, :owner, :html_url, :path
+        attr_reader :content
 
         def initialize(data)
             @path = data['path']
@@ -35,7 +35,7 @@ module Gitrob
             false
         end
 
-        def url_line_part(line)
+        def url_line_part(_line)
             raise NotImplementedError, "#{self.class.name}#area is an abstract method."
         end
 
@@ -45,21 +45,36 @@ module Gitrob
     end
 
     class DiffBlob < AbstractBlob
+        attr_accessor :status
+
         def initialize(data)
             super(data)
             @status = data['status']
-            @content = interpret_diff(data['content'])
+            self.content = data['content']
+        end
+
+        def content=(content)
+            @content = interpret_diff(content)
         end
 
         def interpret_diff(patch)
             return [] if patch.nil? || patch.blank?
-            lines = patch.lines
 
-            start_line_right = /\+(\d*)/.match(lines.first)[0].to_i
+            line_number = /\+(\d*)/.match(patch.lines.first)[0].to_i
+            right_side = patch.lines.reject { |l| l.start_with?('-') }
+            content = []
 
-            right = lines.reject { |l| l.start_with?('-', '@@') }
-
-            content = right.map.with_index(start_line_right) { |line, index| Gitrob::Line.new(index, line) }.select { |l| l.content.start_with?('+') }.each { |l| l.content[0] = '' }
+            right_side.each do |line|
+                if line.start_with?('+')
+                    line = Gitrob::Line.new(line_number, line.strip)
+                    line.content[0] = ''
+                    content << line
+                elsif line.start_with?('@@')
+                    line_number = /\+(\d*)/.match(line)[0].to_i
+                    next
+                end
+                line_number += 1
+            end
             content
         end
 
@@ -68,14 +83,18 @@ module Gitrob
         end
 
         def should_observe_path
-            @status == "added" || @status == "renamed"
+            @status == 'added' || @status == 'renamed'
         end
     end
 
     class Blob < AbstractBlob
         def initialize(data)
             super(data)
-            @content = data['content'].each_line.map.with_index(1) { |line, index| Gitrob::Line.new(index, line) }.reject { |h| h.content.blank? }
+            self.content = data.fetch('content', '')
+        end
+
+        def content=(content)
+            @content = content.each_line.map.with_index(1) { |line, index| Gitrob::Line.new(index, line.strip) }.reject { |h| h.content.blank? }
         end
 
         def url_line_part(line)
