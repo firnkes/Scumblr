@@ -793,3 +793,86 @@ task_89:
     _last_status_message: Task completed in 4.512189 seconds
     _last_successful_run: '2017-08-04T12:27:11.554-07:00'
   run_type: scheduled
+
+
+task_100:
+  id: 100
+  task_type: ScumblrTask::GithubGitrobAnalyzer
+  options: !ruby/hash-with-ivars:ActionController::Parameters
+    elements:
+      severity: observation
+      user: 'scumblrtestdata'
+      github_api_endpoint: https://api.github.com
+    ivars:
+      :@permitted: true
+  name: Github Gitrob User Search Test
+  description: "Scan user"
+  created_at: 2017-02-24 00:52:04.421295000 Z
+  updated_at: 2017-02-24 00:52:04.421295000 Z
+  enabled: true
+  group: 1
+
+
+task_101:
+  id: 101
+  task_type: ScumblrTask::GithubGitrobAnalyzer
+  options: !ruby/hash-with-ivars:ActionController::Parameters
+    elements:
+      severity: observation
+      repo: 'scumblrtestdata/repo2'
+      github_api_endpoint: https://api.github.com/
+  name: Github Gitrob Repo Search Test
+  description: "Scan user"
+  created_at: 2017-02-24 00:52:04.421295000 Z
+  updated_at: 2017-02-24 00:52:04.421295000 Z
+  enabled: true
+  group: 1
+
+task_102:
+  id: 102
+  task_type: ScumblrTask::GithubGitrobAnalyzer
+  options: !ruby/hash-with-ivars:ActionController::Parameters
+    elements:
+      severity: observation
+      repo: 'scumblrtestdata/repo2'
+      github_api_endpoint: https://api.github.com/
+      deep_search: 1
+  name: Github Gitrob Repo Deep Search Search Test
+  description: "Scan user"
+  created_at: 2017-02-24 00:52:04.421295000 Z
+  updated_at: 2017-02-24 00:52:04.421295000 Z
+  enabled: true
+  group: 1
+
+
+task_103:
+  id: 103
+  task_type: ScumblrTask::GithubGitrobAnalyzer
+  options: !ruby/hash-with-ivars:ActionController::Parameters
+    elements:
+      severity: observation
+      repo: 'scumblrtestdata/repo2'
+      github_api_endpoint: https://api.github.com/
+      all_branches: 1
+  name: Github Gitrob Repo All Branches Search Test
+  description: "Scan user"
+  created_at: 2017-02-24 00:52:04.421295000 Z
+  updated_at: 2017-02-24 00:52:04.421295000 Z
+  enabled: true
+  group: 1
+
+task_104:
+  id: 104
+  task_type: ScumblrTask::GithubGitrobAnalyzer
+  options: !ruby/hash-with-ivars:ActionController::Parameters
+    elements:
+      severity: observation
+      repo: 'scumblrtestdata/repo2'
+      github_api_endpoint: https://api.github.com/
+      branch: test
+  name: Github Gitrob Repo Test Branch Search Test
+  description: "Scan user"
+  created_at: 2017-02-24 00:52:04.421295000 Z
+  updated_at: 2017-02-24 00:52:04.421295000 Z
+  enabled: true
+  group: 1

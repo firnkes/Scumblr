@@ -1,12 +1,12 @@
 
 module Gitrob
     class BlobObserver
-        SIGNATURES_FILE_PATH = File.expand_path(
-            '/etc/gitrob_signatures/signatures.json', __FILE__
+        SIGNATURES_FILE_PATH = File.join(File.dirname(__FILE__),
+            '../../../../config/signatures/signatures.json',
         )
 
-        FALSE_POSITIVE_SIGNATURES_FILE_PATH = File.expand_path(
-            '/etc/gitrob_signatures/false_positive_signatures.json', __FILE__
+        FALSE_POSITIVE_SIGNATURES_FILE_PATH = File.join(File.dirname(__FILE__),
+            '../../../../config/signatures/false_positive_signatures.json',
         )
 
         REQUIRED_SIGNATURE_KEYS = %w[part type pattern caption description].freeze
