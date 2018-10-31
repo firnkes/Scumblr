@@ -1,0 +1,9 @@
+[
+  {
+    "part": "content",
+    "type": "regex",
+    "pattern": "[=|:]+\\s*['\"]+\\${.+}['\"]+",
+    "caption" : "parameter substitution",
+    "description" : null
+  }
+]

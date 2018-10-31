@@ -1,0 +1,16 @@
+[{
+  "part": "content",
+  "type": "regex",
+  "pattern": "['\"]?[a-z0]*passw\\S*\\s*['\"]?\\s*[=]+\\s*['\"]+.{3,}['\"]+",
+  "caption" : "Contains passw\\S* before equal sign",
+  "description" : null
+},
+{
+  "part": "content",
+  "type": "regex",
+  "extension_pattern": "json|yaml|yml|conf|config",
+  "pattern": "['\"]?[a-z0]*passw\\S*\\s*['\"]?\\s*[:]\\s*['\"]?.{3,}['\"]?",
+  "caption" : "Contains passw\\S* before colon",
+  "description" : null
+}
+]
