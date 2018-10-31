@@ -8,8 +8,7 @@ class GithubGitrobAnalyzerTest < ActiveSupport::TestCase
         github_search_fixture.perform_task
 
         # Return 2 results from test github org
-        puts(github_search_fixture.metadata[:current_results].to_json)
-        assert_equal(2, github_search_fixture.metadata[:current_results][:created].count)
+        assert_equal(2, github_search_fixture.metadata[:current_results]["created"].count)
 
         # Check vuln count is correct
         assert_equal(2, Result.where(url: 'https://github.com/scumblrtestdata/repo2').first.metadata['vulnerabilities'].count)
@@ -33,7 +32,7 @@ class GithubGitrobAnalyzerTest < ActiveSupport::TestCase
         github_search_fixture = Task.where(id: 101).first
         github_search_fixture.perform_task
 
-        assert_equal(1, github_search_fixture.metadata[:current_results][:created].count)
+        assert_equal(1, github_search_fixture.metadata[:current_results]["created"].count)
 
         # Check vuln count is correct
         assert_equal(2, Result.where(url: 'https://github.com/scumblrtestdata/repo2').first.metadata['vulnerabilities'].count)
@@ -56,7 +55,7 @@ class GithubGitrobAnalyzerTest < ActiveSupport::TestCase
         github_search_fixture.perform_task
 
         # Return 1 results from test github org
-        assert_equal(1, github_search_fixture.metadata[:current_results][:created].count)
+        assert_equal(1, github_search_fixture.metadata[:current_results]["created"].count)
 
         # Check vuln count is correct
         assert_equal(3, Result.where(url: 'https://github.com/scumblrtestdata/repo2').first.metadata['vulnerabilities'].count)
@@ -79,7 +78,7 @@ class GithubGitrobAnalyzerTest < ActiveSupport::TestCase
         github_search_fixture.perform_task
 
         # Return 1 results from test github org
-        assert_equal(1, github_search_fixture.metadata[:current_results][:created].count)
+        assert_equal(1, github_search_fixture.metadata[:current_results]["created"].count)
 
         # Check vuln count is correct
         assert_equal(3, Result.where(url: 'https://github.com/scumblrtestdata/repo2').first.metadata['vulnerabilities'].count)
@@ -100,7 +99,7 @@ class GithubGitrobAnalyzerTest < ActiveSupport::TestCase
         github_search_fixture = Task.where(id: 104).first
         github_search_fixture.perform_task
 
-        assert_equal(1, github_search_fixture.metadata[:current_results][:created].count)
+        assert_equal(1, github_search_fixture.metadata[:current_results]["created"].count)
 
         # Check vuln count is correct
         assert_equal(1, Result.where(url: 'https://github.com/scumblrtestdata/repo2').first.metadata['vulnerabilities'].count)
